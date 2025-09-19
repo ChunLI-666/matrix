@@ -1,7 +1,7 @@
 # Matrix
 
-**Matrix** is a joint simulation toolkit built on top of **Unreal Engine 5 (UE5)** and **MuJoCo**.  
-It provides a unified environment for **robotics research, reinforcement learning, and virtual-real interaction**, combining UE5’s high-fidelity rendering and physics effects with MuJoCo’s lightweight, differentiable physics engine.
+**Matrix** is an advanced simulation platform that seamlessly integrates **MuJoCo**, **Unreal Engine 5**, and **CARLA** to deliver high-fidelity interactive simulation for quadruped robots in realistic physical environments. Through its software-in-the-loop architecture, Matrix enables optimized sim2real transfer for robotics research and deployment.
+
 
 ---
 
