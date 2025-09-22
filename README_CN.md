@@ -1,7 +1,10 @@
-# Matrix
+<h1>
+  <a href="#"><img alt="Forest" src="demo_gif/Forest.png" width="100%"/></a>
+</h1>
 
-**Matrix** 是一个基于 **Unreal Engine 5 (UE5)** 和 **MuJoCo** 的联合仿真工具包。  
-它为**机器人研究、强化学习和虚实交互**提供了统一的环境，将 UE5 的高保真渲染与物理效果和 MuJoCo 的轻量级、可微分物理引擎相结合。
+# Matrix
+Matrix 是一个先进的仿真平台，集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA**，为四足机器人研究提供高保真、交互式的仿真环境。其软件在环（SIL）架构实现了真实的物理仿真、沉浸式视觉效果，并优化了仿真到现实（sim-to-real）的迁移能力，助力机器人开发与部署。
+
 
 ---
 
@@ -98,17 +101,30 @@
 
 ## 🏞️ 演示环境
 
-- **Start Map**  
-  <img src="demo_gif/start_map.png" alt="Matrix Demo Screenshot" width="500"/>
+<div align="center">
 
-- **Warehouse**  
-  <img src="demo_gif/whmap.gif" alt="Matrix Warehouse Demo" width="500"/>
+<table>
+  <tr>
+    <th>Map</th>
+    <th>Demo Screenshot</th>
+    <th>Map</th>
+    <th>Demo Screenshot</th>
+  </tr>
+  <tr>
+    <td><b>Start Map</b></td>
+    <td><img src="demo_gif/start_map.png" alt="Matrix Demo Screenshot" width="350" height="200"/></td>
+    <td><b>Warehouse</b></td>
+    <td><img src="demo_gif/whmap.gif" alt="Matrix Warehouse Demo" width="350" height="200"/></td>
+  </tr>
+  <tr>
+    <td><b>Town10</b></td>
+    <td><img src="demo_gif/Town10.gif" alt="Matrix Town Demo" width="350" height="200"/></td>
+    <td><b>Yard</b></td>
+    <td><img src="demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="350" height="200"/></td>
+  </tr>
+</table>
 
-- **Town10**  
-  <img src="demo_gif/Town10.gif" alt="Matrix Town Demo" width="500"/>
-
-- **Yard**  
-  <img src="demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="500"/>
+</div>
 
 > **注：** 上述截图展示了用于机器人与强化学习实验的 UE5 高保真渲染效果。
 

@@ -1,7 +1,9 @@
+<h1>
+  <a href="#"><img alt="Forest" src="demo_gif/Forest.png" width="100%"/></a>
+</h1>
+
 # Matrix
-
-**Matrix** is an advanced simulation platform that seamlessly integrates **MuJoCo**, **Unreal Engine 5**, and **CARLA** to deliver high-fidelity interactive simulation for quadruped robots in realistic physical environments. Through its software-in-the-loop architecture, Matrix enables optimized sim2real transfer for robotics research and deployment.
-
+Matrix is an advanced simulation platform that integrates **MuJoCo**, **Unreal Engine 5**, and **CARLA** to provide high-fidelity, interactive environments for quadruped robot research. Its software-in-the-loop architecture enables realistic physics, immersive visuals, and optimized sim-to-real transfer for robotics development and deployment.
 
 ---
 
@@ -99,20 +101,32 @@ sudo make install
   *(This script will automatically install all required dependencies.)*
 
 ---
-
 ## 🏞️ Demo Environments
 
-- **Start Map**  
-  <img src="demo_gif/start_map.png" alt="Matrix Demo Screenshot" width="500"/>
+<div align="center">
 
-- **Warehouse**  
-  <img src="demo_gif/whmap.gif" alt="Matrix Warehouse Demo" width="500"/>
+<table>
+  <tr>
+    <th>Map</th>
+    <th>Demo Screenshot</th>
+    <th>Map</th>
+    <th>Demo Screenshot</th>
+  </tr>
+  <tr>
+    <td><b>Start Map</b></td>
+    <td><img src="demo_gif/start_map.png" alt="Matrix Demo Screenshot" width="350" height="200"/></td>
+    <td><b>Warehouse</b></td>
+    <td><img src="demo_gif/whmap.gif" alt="Matrix Warehouse Demo" width="350" height="200"/></td>
+  </tr>
+  <tr>
+    <td><b>Town10</b></td>
+    <td><img src="demo_gif/Town10.gif" alt="Matrix Town Demo" width="350" height="200"/></td>
+    <td><b>Yard</b></td>
+    <td><img src="demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="350" height="200"/></td>
+  </tr>
+</table>
 
-- **Town10**  
-  <img src="demo_gif/Town10.gif" alt="Matrix Town Demo" width="500"/>
-
-- **Yard**  
-  <img src="demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="500"/>
+</div>
 
 > **Note:** The above screenshots showcase high-fidelity UE5 rendering for robotics and reinforcement learning experiments.
 
