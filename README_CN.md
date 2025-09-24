@@ -67,17 +67,17 @@ Matrix 是一个先进的仿真平台，集成了 **MuJoCo**、**Unreal Engine 5
 
     - **方式一：Google Drive**
 
-      [Google Drive 下载链接](https://drive.google.com/file/d/1-Xt-kG95yE-wEzJxa54DT2DHKifCy0_G/view?usp=sharing)
+      [Google Drive 下载链接](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
 
       **使用 gdown 下载：**
       ```bash
       pip install gdown
-      gdown https://drive.google.com/uc?id=1-Xt-kG95yE-wEzJxa54DT2DHKifCy0_G
+      gdown https://drive.google.com/uc?id=1Xp7ZQrFeQO6ijKAKw5uRmbMAHoPuG-Yg
       ```
 
     - **方式二：百度网盘**  
 
-      [百度网盘链接](https://pan.baidu.com/s/1IaGiqK7_n59UPE3vcBKg9A?pwd=ju7h)  
+      [百度网盘链接](https://pan.baidu.com/s/1V2GsUptFS-pkpU_2ckcg4A?pwd=utjn)  
 
     - **方式三：JFrog**  
 
@@ -248,3 +248,23 @@ void callback(const sensor_msgs::msg::CompressedImage::SharedPtr msg)
     cv_ptr->image = cv_ptr->image / 20.0;
 }
 ```
+
+  ## 📡 传感器数据在 RViz 中可视化
+
+  在 RViz 中可视化传感器数据的方法如下：
+
+  1. **按前述方式启动仿真。**
+  2. **启动 RViz：**
+    ```bash
+    rviz2
+    ```
+  3. **加载配置文件：**  
+    在 RViz 中打开 `rviz/matrix.rviz`，即可获得预设视图。
+
+  > **提示：** 请确保已正确 source ROS 环境，并且相关话题正在发布。
+
+  <div align="center">
+    <img src="./demo_gif/rviz2.png" alt="RViz Visualization Example" width="1280" height="720"/>
+  </div>
+
+  ---
