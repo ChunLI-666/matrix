@@ -1,6 +1,6 @@
 <h1>
   <a href="#"><img alt="Forest" src="demo_gif/Forest.png" width="100%"/></a>
-  </h1>
+</h1>
 
 # MATRiX
 MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal Engine 5**, and **CARLA** to provide high-fidelity, interactive environments for quadruped robot research. Its software-in-the-loop architecture enables realistic physics, immersive visuals, and optimized sim-to-real transfer for robotics development and deployment.
@@ -21,6 +21,9 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   │   ├── download_uesim.sh
   │   ├── install_deps.sh
   │   └── modify_config.sh
+  ├── docs/                        # Documentation and guides
+  ├── config/                      # Robot and sensor configuration files
+  │   ├── scene/                   # Custom scene files
   ├── src/
   │   ├── robot_mc/
   │   ├── robot_mujoco/
@@ -74,23 +77,26 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   2. **Download MATRiX simulator**
 
      - **Method 1: Google Drive**  
-       [Google Drive Download Link](https://drive.google.com/file/d/1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J/view?usp=sharing)
+       [Google Drive Download Link](https://drive.google.com/file/d/12rQuKy8xM15gcIN_T3G5cg2NeqdtSKkW/view?usp=sharing)
 
        **Download via gdown:**
        ```bash
        pip install gdown
-       gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
+       gdown https://drive.google.com/uc?id=12rQuKy8xM15gcIN_T3G5cg2NeqdtSKkW
        ```
-
+       
      - **Method 2: Baidu Netdisk**  
-       [Baidu Netdisk Link](https://pan.baidu.com/s/1-OFLjpxDaRe6UYilaKbO2w?pwd=dwh8)  
+       [Baidu Netdisk Link](https://pan.baidu.com/s/1TBVFYA75YVPeR4KBMY1t2g?pwd=a3r6)  
 
      - **Method 3: JFrog**  
        ```bash
        curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla"  -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"  
        ```
       > **Note:** When downloading from the cloud storage links, please ensure you select the latest version for the best compatibility and features.
-    
+
+      > **Previous version link**: [Link](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
+
+
   3. **Unzip**
      ```bash
      unzip <downloaded_filename>
@@ -115,6 +121,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | **Town10**      | <img src="demo_gif/Town10.gif" alt="Matrix Town Demo" width="350" height="200"/>       | **Yard**        | <img src="demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="350" height="200"/> |
 
   </div>
+
+  > **Note:** Map Descriptions [doc](docs/README_1.md).
 
   > **Note:** The above screenshots showcase high-fidelity UE5 rendering for robotics and reinforcement learning experiments.
 
@@ -180,11 +188,16 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ## 🔧 Configuration Guide
 
+  ### Custom scene setup
+  - Write your custom scene in a json file following the existing format in `matrix/scene/`, details in [doc](docs/README_2.md).
+  - Place your custom scene file in the `matrix/scene/` directory.
+  - Select the custom map from the launcher to load it in the simulation.
+
   ### Adjust Sensor Configuration
 
   Edit:
   ```bash
-  vim matrix/src/UeSim/jszr_mujoco_ue/Content/model/config/config.json
+  vim matrix/config/config.json
   ```
 
   Example snippet:
@@ -205,7 +218,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
                 "width": 1920,
                 "sensor_type": "rgb",
                 "topic": "/image_raw/compressed",
-                "fov": 90.0
+                "fov": 90.0,
+                "frequency": 10.0
             },
             "depth_sensor": {
                 "position": {
@@ -222,7 +236,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
                 "width": 640,
                 "sensor_type": "depth",
                 "topic": "/image_raw/compressed/depth",
-                "fov": 90.0
+                "fov": 90.0,
+                "frequency": 10.0
             },
             "lidar": {
                 "position": {
@@ -232,13 +247,14 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
                 },
                 "rotation": {
                     "roll": 0.0,
-                    "pitch": -60.0,
+                    "pitch": 0.0,
                     "yaw": 0.0
                 },
                 "sensor_type": "mid360",
                 "topic": "/livox/lidar",
                 "draw_points": false,
-                "random_scan": false
+                "random_scan": false,
+                "frequency": 10.0
             }
         }
 ```
@@ -263,7 +279,6 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
 
 
-
   ## 📡 Sensor Data Visualization in RViz
 
   To visualize sensor data in RViz:
@@ -284,8 +299,9 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ## 📋 TODO List
 
-  - [x] IROS competition map
-  - [ ] Support for third-party quadruped robot models
+  - [x] IROS competition map(4 maps)
+  - [x] Support for third-party quadruped robot models
+  - [x] Support for custom scene based on json file
   - [ ] Add multi-robot simulation capabilities
 
   
