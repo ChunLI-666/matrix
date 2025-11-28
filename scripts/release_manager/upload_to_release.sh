@@ -13,7 +13,7 @@ cd "$PROJECT_ROOT"
 
 VERSION="${1:-2.0.8}"
 REPO="Alphabaijinde/matrix"
-RELEASE_DIR="releases/chunks/${VERSION}"
+RELEASE_DIR="releases"
 MAX_SIZE=2147483648  # 2GB in bytes (GitHub Releases limit)
 
 log() {
@@ -60,6 +60,14 @@ log_section "上传文件到 GitHub Release v${VERSION}"
 # 检查 Release 目录
 if [ ! -d "$RELEASE_DIR" ]; then
     error_exit "Release 目录不存在: $RELEASE_DIR"
+fi
+
+# 检查基础包和共享包是否存在
+if [ ! -f "${RELEASE_DIR}/base-${VERSION}.tar.gz" ]; then
+    error_exit "基础包不存在: ${RELEASE_DIR}/base-${VERSION}.tar.gz"
+fi
+if [ ! -f "${RELEASE_DIR}/shared-${VERSION}.tar.gz" ]; then
+    error_exit "共享资源包不存在: ${RELEASE_DIR}/shared-${VERSION}.tar.gz"
 fi
 
 # 检查 Release 是否存在
@@ -138,9 +146,13 @@ skip_count=0
 split_count=0
 SPLIT_SCRIPT="${SCRIPT_DIR}/split_large_file.sh"
 
-if [ -d "${RELEASE_DIR}/maps" ]; then
-    for map_tar in "${RELEASE_DIR}/maps"/*.tar.gz; do
+if ls "${RELEASE_DIR}"/*-${VERSION}.tar.gz 1> /dev/null 2>&1; then
+    for map_tar in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
         if [ -f "$map_tar" ]; then
+            # Skip base and shared packages (already uploaded)
+            if [[ "$map_tar" == *"base-${VERSION}.tar.gz" ]] || [[ "$map_tar" == *"shared-${VERSION}.tar.gz" ]]; then
+                continue
+            fi
             map_name=$(basename "$map_tar")
             file_size=$(stat -c%s "$map_tar" 2>/dev/null || stat -f%z "$map_tar" 2>/dev/null || echo 0)
             file_size_mb=$((file_size / 1024 / 1024))
