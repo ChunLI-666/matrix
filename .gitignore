@@ -24,6 +24,8 @@ src/UeSim/Linux/jszr_mujoco_ue/Binaries/*
 # Build artifacts
 *.log
 *.tmp
+bin/*.log
+bin/log.txt
 
 # Build directories
 **/build/
