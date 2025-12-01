@@ -70,12 +70,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_NAME="BASENAME_PLACEHOLDER"
 EXT="EXT_PLACEHOLDER"
 OUTPUT_FILE="${SCRIPT_DIR}/${BASE_NAME}.${EXT}"
+CHECKSUM_FILE="${SCRIPT_DIR}/${BASE_NAME}.${EXT}.sha256"
 
 echo "合并文件: ${BASE_NAME}.${EXT}"
 echo "输出: ${OUTPUT_FILE}"
 
 # 删除已存在的输出文件
 if [[ -f "$OUTPUT_FILE" ]]; then
+    # 检查校验和是否已匹配，如果匹配则无需覆盖
+    if [[ -f "$CHECKSUM_FILE" ]]; then
+        EXPECTED_SUM=$(cat "$CHECKSUM_FILE" | awk '{print $1}')
+        CURRENT_SUM=$(sha256sum "$OUTPUT_FILE" 2>/dev/null | awk '{print $1}' || echo "none")
+        if [[ "$EXPECTED_SUM" == "$CURRENT_SUM" ]]; then
+            echo "✓ 文件已存在且校验和匹配，无需操作"
+            exit 0
+        fi
+    fi
+
     read -p "输出文件已存在，是否覆盖? [y/N]: " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -86,20 +97,42 @@ if [[ -f "$OUTPUT_FILE" ]]; then
 fi
 
 # 合并所有分片
+echo "正在合并分片..."
 cat "${SCRIPT_DIR}/${BASE_NAME}.part"* > "$OUTPUT_FILE"
 
-# 验证文件大小
-EXPECTED_SIZE="EXPECTED_SIZE_PLACEHOLDER"
-ACTUAL_SIZE=$(stat -c%s "$OUTPUT_FILE" 2>/dev/null || stat -f%z "$OUTPUT_FILE" 2>/dev/null || echo 0)
-
-if [[ "$ACTUAL_SIZE" == "$EXPECTED_SIZE" ]]; then
-    echo "✓ 合并成功！文件大小: $(echo "scale=2; $ACTUAL_SIZE / 1024 / 1024 / 1024" | bc)GB"
-    echo "✓ 可以删除分片文件: rm ${BASE_NAME}.part*"
+# 验证校验和
+if [[ -f "$CHECKSUM_FILE" ]]; then
+    echo "验证校验和..."
+    EXPECTED_SUM=$(cat "$CHECKSUM_FILE" | awk '{print $1}')
+    CURRENT_SUM=$(sha256sum "$OUTPUT_FILE" | awk '{print $1}')
+    
+    if [[ "$EXPECTED_SUM" == "$CURRENT_SUM" ]]; then
+        echo "✓ 校验和匹配！"
+        echo "✓ 合并成功！"
+        echo "✓ 可以删除分片文件: rm ${BASE_NAME}.part*"
+    else
+        echo "❌ 校验和不匹配！"
+        echo "  期望: $EXPECTED_SUM"
+        echo "  实际: $CURRENT_SUM"
+        echo "删除损坏的文件..."
+        rm -f "$OUTPUT_FILE"
+        exit 1
+    fi
 else
-    echo "⚠️  警告: 文件大小不匹配"
-    echo "  期望: ${EXPECTED_SIZE} 字节"
-    echo "  实际: ${ACTUAL_SIZE} 字节"
-    exit 1
+    # 验证文件大小 (兼容旧逻辑)
+    EXPECTED_SIZE="EXPECTED_SIZE_PLACEHOLDER"
+    ACTUAL_SIZE=$(stat -c%s "$OUTPUT_FILE" 2>/dev/null || stat -f%z "$OUTPUT_FILE" 2>/dev/null || echo 0)
+
+    if [[ "$ACTUAL_SIZE" == "$EXPECTED_SIZE" ]]; then
+        echo "✓ 合并成功！文件大小: $(echo "scale=2; $ACTUAL_SIZE / 1024 / 1024 / 1024" | bc)GB"
+        echo "⚠️  注意: 未找到校验和文件，仅验证了文件大小"
+        echo "✓ 可以删除分片文件: rm ${BASE_NAME}.part*"
+    else
+        echo "❌ 文件大小不匹配"
+        echo "  期望: ${EXPECTED_SIZE} 字节"
+        echo "  实际: ${ACTUAL_SIZE} 字节"
+        exit 1
+    fi
 fi
 EOFSCRIPT
     

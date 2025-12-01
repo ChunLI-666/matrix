@@ -118,60 +118,165 @@ log_section "[2] 下载共享资源包 (推荐)"
 
 log_section "[3] 下载地图包 (可选)"
 {
-    echo "可用地图包:"
-    echo "  11. SceneWorld"
-    echo "  12. Town10World"
-    echo "  13. YardWorld"
-    echo "  14. CrowdWorld"
-    echo "  15. VeniceWorld"
-    echo "  16. RunningWorld"
-    echo "  17. HouseWorld"
-    echo "  18. IROSFlatWorld"
-    echo "  19. IROSSlopedWorld"
-    echo "  20. Town10Zombie"
-    echo "  21. IROSFlatWorld2025"
-    echo "  22. IROSSloppedWorld2025"
-    echo "  23. OfficeWorld"
-    echo "  24. Custom"
+    # 尝试从 manifest 读取可用地图列表
+    MANIFEST_FILE="manifest-${VERSION}.json"
+    MANIFEST_URL="${GITHUB_RELEASE_URL}/${MANIFEST_FILE}"
+    
+    # 下载 manifest 文件（如果不存在）
+    if [ ! -f "$MANIFEST_FILE" ]; then
+        log "下载 manifest 文件以获取可用地图列表..."
+        download_file "$MANIFEST_URL" "$MANIFEST_FILE" || log "⚠️  无法下载 manifest，使用默认地图列表"
+    fi
+    
+    # 从 manifest 读取地图列表（如果可用）
+    if [ -f "$MANIFEST_FILE" ] && command -v jq &> /dev/null; then
+        log "从 manifest 读取可用地图包..."
+        echo ""
+        echo "可用地图包:"
+        map_index=1
+        map_names=()
+        while IFS= read -r map_name; do
+            if [ -n "$map_name" ]; then
+                map_size=$(jq -r ".packages.maps[] | select(.name==\"$map_name\") | .size" "$MANIFEST_FILE" 2>/dev/null || echo "未知")
+                map_desc=$(jq -r ".packages.maps[] | select(.name==\"$map_name\") | .description" "$MANIFEST_FILE" 2>/dev/null || echo "")
+                if [ "$map_size" != "null" ] && [ "$map_size" != "" ]; then
+                    size_mb=$(echo "scale=1; $map_size / 1024 / 1024" | bc)
+                    printf "  %2d. %-25s (%6.1f MB) %s\n" "$map_index" "$map_name" "$size_mb" "$map_desc"
+                else
+                    printf "  %2d. %-25s\n" "$map_index" "$map_name"
+                fi
+                map_names+=("$map_name")
+                ((map_index++))
+            fi
+        done < <(jq -r '.packages.maps[].name' "$MANIFEST_FILE" 2>/dev/null)
+        
+        if [ ${#map_names[@]} -eq 0 ]; then
+            # 如果 jq 解析失败，使用默认列表
+            log "⚠️  无法解析 manifest，使用默认地图列表"
+            map_names=("SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "RunningWorld" "HouseWorld" "IROSFlatWorld" "IROSSlopedWorld" "Town10Zombie" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "Custom")
+            for map_name in "${map_names[@]}"; do
+                printf "  %2d. %s\n" "$map_index" "$map_name"
+                ((map_index++))
+            done
+        fi
+    else
+        # 如果没有 manifest 或 jq，使用默认列表
+        echo "可用地图包:"
+        map_names=("SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "RunningWorld" "HouseWorld" "IROSFlatWorld" "IROSSlopedWorld" "Town10Zombie" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "Custom")
+        map_index=1
+        for map_name in "${map_names[@]}"; do
+            printf "  %2d. %s\n" "$map_index" "$map_name"
+            ((map_index++))
+        done
+    fi
+    
     echo ""
     echo "输入要下载的地图名称（用空格分隔，或输入 'all' 下载全部，直接回车跳过）:"
     read -r maps_input
     
+    # 函数：下载并安装单个地图包（支持分片）
+    download_and_install_map() {
+        local map_name=$1
+        local map_file="${map_name}-${VERSION}.tar.gz"
+        local map_url="${GITHUB_RELEASE_URL}/${map_file}"
+        
+        # 1. 尝试直接下载完整包
+        if download_file "$map_url" "$map_file"; then
+            extract_tar "$map_file" "$PAK_DIR"
+            log "  ✓ ${map_name} 安装完成 (文件保留在: ${DOWNLOAD_DIR}/${map_file})"
+            # 保留下载的文件在 releases/ 目录，不删除
+            return 0
+        fi
+        
+        # 2. 如果直接下载失败，尝试检查是否存在分片合并脚本
+        local merge_script="${map_file%.gz}.merge.sh" # 注意：这里假设 split 脚本生成的 merge 脚本名为 .tar.merge.sh
+        # 如果文件名是 Town10World-0.0.4.tar.gz，merge 脚本是 Town10World-0.0.4.tar.merge.sh
+        # 但我们在 upload_to_release.sh 看到的命名似乎是 Town10World-0.0.4.tar.merge.sh
+        
+        local merge_url="${GITHUB_RELEASE_URL}/${merge_script}"
+        
+        log "尝试下载分片合并脚本: $merge_script"
+        if download_file "$merge_url" "$merge_script"; then
+            log "检测到分片文件，开始下载分片..."
+            
+            # 下载分片 part000, part001, ...
+            local part_idx=0
+            local download_success=true
+            
+            while true; do
+                local part_ext=$(printf "part%03d" $part_idx)
+                local part_file="${map_file%.gz}.${part_ext}" # Town10World-0.0.4.tar.part000
+                local part_url="${GITHUB_RELEASE_URL}/${part_file}"
+                
+                # 尝试下载分片，如果失败（404），假设分片结束
+                # 注意：wget/curl 在 404 时可能不会返回错误代码，取决于具体参数，这里假设 download_file 处理了
+                # 但为了保险，我们先检查 part000，后续失败则停止
+                
+                if download_file "$part_url" "$part_file"; then
+                    ((part_idx++))
+                else
+                    if [ $part_idx -eq 0 ]; then
+                        log "⚠️  无法下载第一个分片: $part_file"
+                        download_success=false
+                    else
+                        log "分片下载结束 (共 $part_idx 个)"
+                    fi
+                    break
+                fi
+            done
+            
+            if [ "$download_success" = true ] && [ $part_idx -gt 0 ]; then
+                # 下载校验和文件（可选）
+                local sha_file="${map_file%.gz}.sha256"
+                download_file "${GITHUB_RELEASE_URL}/${sha_file}" "$sha_file" || true
+                
+                # 执行合并
+                log "合并分片..."
+                chmod +x "$merge_script"
+                if ./$merge_script; then
+                    log "✓ 合并成功"
+                    extract_tar "$map_file" "$PAK_DIR"
+                    log "  ✓ ${map_name} 安装完成"
+                    log "  ✓ 文件保留在: ${DOWNLOAD_DIR}/${map_file}"
+                    log "  ✓ 分片文件保留在: ${DOWNLOAD_DIR}/"
+                    # 保留所有文件（分片、合并脚本、校验和、合并后的文件）在 releases/ 目录，不删除
+                    return 0
+                else
+                    log "⚠️  合并失败"
+                    return 1
+                fi
+            else
+                log "⚠️  分片下载不完整"
+                return 1
+            fi
+        else
+            log "  ⚠️  ${map_name} 下载失败 (未找到完整包或分片信息)，跳过"
+            return 1
+        fi
+    }
+
     if [ -z "$maps_input" ]; then
         log "跳过地图包下载"
     elif [ "$maps_input" = "all" ]; then
         log "下载所有地图包..."
-        map_names=("SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "RunningWorld" "HouseWorld" "IROSFlatWorld" "IROSSlopedWorld" "Town10Zombie" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "Custom")
+        # 如果 map_names 数组未定义，使用默认列表
+        if [ ${#map_names[@]} -eq 0 ]; then
+            map_names=("SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "RunningWorld" "HouseWorld" "IROSFlatWorld" "IROSSlopedWorld" "Town10Zombie" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "Custom")
+        fi
         for map_name in "${map_names[@]}"; do
-            MAP_FILE="${map_name}-${VERSION}.tar.gz"
-            MAP_URL="${GITHUB_RELEASE_URL}/${MAP_FILE}"
-            if download_file "$MAP_URL" "$MAP_FILE"; then
-                extract_tar "$MAP_FILE" "$PAK_DIR"
-                log "  ✓ ${map_name} 安装完成"
-            else
-                log "  ⚠️  ${map_name} 下载失败，跳过"
-            fi
+            download_and_install_map "$map_name"
         done
     else
         for map_name in $maps_input; do
-            MAP_FILE="${map_name}-${VERSION}.tar.gz"
-            MAP_URL="${GITHUB_RELEASE_URL}/${MAP_FILE}"
-            if download_file "$MAP_URL" "$MAP_FILE"; then
-                extract_tar "$MAP_FILE" "$PAK_DIR"
-                log "  ✓ ${map_name} 安装完成"
-            else
-                log "  ⚠️  ${map_name} 下载失败，跳过"
-            fi
+            download_and_install_map "$map_name"
         done
     fi
 }
 
-log_section "[4] 清理和验证"
+log_section "[4] 验证安装"
 {
-    # 清理下载目录
-    cd "$PROJECT_ROOT"
-    rm -rf "$DOWNLOAD_DIR"
-    log "✓ 清理临时文件"
+    # 保留所有下载的文件在 releases/ 目录，不清理
+    log "✓ 所有文件已保存到: ${DOWNLOAD_DIR}/"
     
     # 验证安装
     log "验证安装..."
@@ -197,10 +302,21 @@ log_section "[5] 完成"
     fi
     echo "  - 地图包: $(ls -1 "${PAK_DIR}"/pakchunk[1-9][0-9]*-Linux.pak 2>/dev/null | wc -l) 个"
     echo ""
+    echo "下载的文件保存在: ${DOWNLOAD_DIR}/"
+    echo "  - 基础包: ${DOWNLOAD_DIR}/base-${VERSION}.tar.gz"
+    if [ -f "${DOWNLOAD_DIR}/shared-${VERSION}.tar.gz" ]; then
+        echo "  - 共享资源包: ${DOWNLOAD_DIR}/shared-${VERSION}.tar.gz"
+    fi
+    echo "  - 地图包: ${DOWNLOAD_DIR}/*-${VERSION}.tar.gz"
+    echo ""
     echo "运行目录: ${TARGET_DIR}"
     echo ""
     echo "现在可以运行模拟器了:"
     echo "  cd ${PROJECT_ROOT}"
     echo "  ./scripts/run_sim.sh 0 0  # 运行EmptyWorld"
+    echo ""
+    echo "提示: 如果需要重新安装或安装其他地图包，可以:"
+    echo "  1. 使用本地安装脚本: bash scripts/release_manager/install_chunks_local.sh ${VERSION}"
+    echo "  2. 或重新运行此脚本选择其他地图包"
 }
 

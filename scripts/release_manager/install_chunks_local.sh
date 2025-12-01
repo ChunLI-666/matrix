@@ -79,6 +79,24 @@ log_section "[2] 安装共享资源包 (推荐)"
 
 log_section "[3] 安装地图包 (可选)"
 {
+    # 检查并合并分片文件
+    for merge_script in "${RELEASE_DIR}"/*.merge.sh; do
+        if [ -f "$merge_script" ]; then
+            # 获取目标文件名（从 merge script 文件名推断，去掉 .merge.sh 后缀）
+            target_file="${merge_script%.merge.sh}"
+            # 如果合并后的文件不存在，则执行合并
+            if [ ! -f "$target_file" ]; then
+                log "发现分片文件，正在合并: $(basename "$target_file")"
+                # 赋予执行权限并运行
+                chmod +x "$merge_script"
+                # 在 RELEASE_DIR 中执行，确保路径正确
+                (cd "$RELEASE_DIR" && ./$(basename "$merge_script")) || log "⚠️  合并失败: $(basename "$merge_script")"
+            else
+                log "分片文件已合并: $(basename "$target_file")"
+            fi
+        fi
+    done
+
     map_count=0
     for map_tar in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
         # 跳过 base 和 shared

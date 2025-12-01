@@ -2,7 +2,7 @@
   <a href="#"><img alt="Forest" src="demo_gif/Forest.png" width="100%"/></a>
   </h1>
 
-<div align="right">
+<div align="center">
 
 [![English](https://img.shields.io/badge/Language-English-blue)](../README.md)
 [![中文](https://img.shields.io/badge/语言-中文-red)](README_CN.md)
@@ -18,7 +18,7 @@ MATRiX 是一个先进的仿真平台，集成了 **MuJoCo**、**Unreal Engine 5
 
   ```text
   ├── bin/                         # 可执行二进制文件
-  │   └── sim_launcher            # GUI 启动器 (24MB)
+  │   └── sim_launcher                # GUI 启动器 (24MB)
   ├── deps/                        # 第三方依赖
   │   ├── ecal_5.13.3-1ppa1~jammy_amd64.deb
   │   ├── mujoco_3.3.0_x86_64_Linux.deb
@@ -28,16 +28,24 @@ MATRiX 是一个先进的仿真平台，集成了 **MuJoCo**、**Unreal Engine 5
   │   ├── README_CN.md
   │   └── CHUNK_PACKAGES_GUIDE.md
   ├── scripts/                     # 构建与配置脚本
-  │   ├── build.sh                # 一键构建脚本
-  │   ├── run_sim.sh              # 仿真启动脚本
+  │   ├── build.sh                    # 一键构建脚本
+  │   ├── run_sim.sh                  # 仿真启动脚本
   │   ├── build_mc.sh
   │   ├── build_mujoco_sdk.sh
   │   ├── download_uesim.sh
   │   ├── install_deps.sh
   │   ├── modify_config.sh
-  │   └── release_manager/        # 发布和包管理
-  │       ├── install_chunks.sh
-  │       └── package_chunks_for_release.sh
+  │   └── release_manager/         # 发布和包管理
+  │       ├── install_chunks.sh              # 从 GitHub Releases 下载并安装
+  │       ├── install_chunks_local.sh        # 从本地 releases/ 目录安装
+  │       ├── package_chunks_for_release.sh  # 打包 chunks 用于发布
+  │       ├── upload_to_release.sh           # 上传包到 GitHub Releases
+  │       └── split_large_file.sh            # 分割大文件（>2GB）用于 GitHub
+  ├── releases/                    # 下载的 chunk 包（安装后创建）
+  │   ├── base-*.tar.gz               # 基础包
+  │   ├── shared-*.tar.gz             # 共享资源
+  │   ├── *-*.tar.gz                  # 地图包
+  │   └── manifest-*.json             # 包清单
   ├── src/
   │   ├── robot_mc/
   │   ├── robot_mujoco/
@@ -81,37 +89,176 @@ MATRiX 是一个先进的仿真平台，集成了 **MuJoCo**、**Unreal Engine 5
      ```
      > **注意：** 将 `<version>` 替换为实际解压的 LCM 目录名称。
 
-  2. **下载 MATRiX 仿真器**
-
-     - **方法 1：Google Drive**  
-       [Google Drive 下载链接](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
-
-       **通过 gdown 下载：**
-       ```bash
-       pip install gdown
-       gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
-       ```
-
-     - **方法 2：百度网盘**  
-       [百度网盘链接](https://pan.baidu.com/s/1o8UEO1vUxPYmzeiiP9DYgg?pwd=hwqs)  
-
-     - **方法 3：JFrog**  
-       ```bash
-       curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla"  -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"  
-       ```
-      > **注意：** 从云存储链接下载时，请确保选择最新版本以获得最佳兼容性和功能。
-
-  3. **解压**
+  2. **克隆 MATRiX 仓库**
      ```bash
-     unzip <downloaded_filename>
+     git clone https://github.com/Alphabaijinde/matrix.git
+     cd matrix
      ```
 
-  4. **安装依赖**
+  3. **安装依赖**
      ```bash
-     cd MATRiX
      ./scripts/build.sh
      ```
      *(此脚本将自动安装所有必需依赖。)*
+
+  4. **安装 Chunk 包（模块化安装）**
+
+     MATRiX 使用模块化 chunk 包系统，允许您只下载需要的内容：
+     - **基础包**（必需）：核心文件和 EmptyWorld 地图
+     - **共享资源**（推荐）：多个地图共享的资源
+     - **地图包**（可选）：可按需下载的独立地图
+
+     **自动安装（推荐）：**
+     ```bash
+     bash scripts/release_manager/install_chunks.sh 0.0.4
+     ```
+     
+     脚本将：
+     - 下载基础包（必需）
+     - 提示是否下载共享资源（推荐）
+     - 交互式选择要下载的地图
+     - 将所有下载的文件保存到 `releases/` 目录供后续使用
+
+     **可用地图：**
+     - SceneWorld, Town10World, YardWorld, CrowdWorld, VeniceWorld
+     - RunningWorld, HouseWorld, IROSFlatWorld, IROSSlopedWorld
+     - Town10Zombie, IROSFlatWorld2025, IROSSloppedWorld2025
+     - OfficeWorld, Custom
+
+     > **注意：** 所有下载的包都保存在 `releases/` 目录。您可以使用 `install_chunks_local.sh` 稍后安装其他地图，无需重新下载。
+
+     **备选：从云存储手动下载**
+     
+     如果您更喜欢从云存储下载完整包：
+     - **Google Drive**: [下载链接](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
+       ```bash
+       pip install gdown
+       gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
+       unzip <downloaded_filename>
+       ```
+     - **百度网盘**: [下载链接](https://pan.baidu.com/s/1o8UEO1vUxPYmzeiiP9DYgg?pwd=hwqs)
+     - **JFrog**:
+       ```bash
+       curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla" -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"
+       unzip matrix.zip
+       ```
+
+  ---
+
+  ## 🛠️ 脚本使用指南
+
+  MATRiX 提供了多种脚本来帮助您构建、安装和运行仿真器。以下是合理使用这些脚本的方法：
+
+  ### 📋 脚本分类
+
+  #### **用户脚本**（面向最终用户）
+
+  | 脚本 | 用途 | 使用方法 |
+  |------|------|---------|
+  | `build.sh` | 一键构建和依赖安装 | `./scripts/build.sh` |
+  | `run_sim.sh` | 启动仿真 | `./scripts/run_sim.sh <机器人类型> <地图ID>` |
+  | `install_chunks.sh` | 从 GitHub 下载并安装 chunk 包 | `bash scripts/release_manager/install_chunks.sh <版本号>` |
+  | `install_chunks_local.sh` | 从本地 releases/ 目录安装 chunk 包 | `bash scripts/release_manager/install_chunks_local.sh <版本号>` |
+
+  #### **开发者脚本**（面向贡献者）
+
+  | 脚本 | 用途 | 使用方法 |
+  |------|------|---------|
+  | `build_mc.sh` | 构建 MC 控制模块 | `./scripts/build_mc.sh` |
+  | `build_mujoco_sdk.sh` | 构建 MuJoCo SDK | `./scripts/build_mujoco_sdk.sh` |
+  | `package_chunks_for_release.sh` | 打包 chunks 用于发布 | `bash scripts/release_manager/package_chunks_for_release.sh <版本号>` |
+  | `upload_to_release.sh` | 上传包到 GitHub Releases | `bash scripts/release_manager/upload_to_release.sh <版本号>` |
+  | `split_large_file.sh` | 分割大文件（>2GB）用于 GitHub | `bash scripts/release_manager/split_large_file.sh <文件路径>` |
+
+  ### 🚀 典型工作流程
+
+  #### **首次设置（新用户）**
+
+  ```bash
+  # 1. 克隆仓库
+  git clone https://github.com/Alphabaijinde/matrix.git
+  cd matrix
+
+  # 2. 安装依赖并构建
+  ./scripts/build.sh
+
+  # 3. 安装 chunk 包（从 GitHub 下载）
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+  # → 选择性选择要下载的地图
+  # → 文件保存到 releases/ 目录
+  # → 包自动安装到 src/UeSim/Linux/jszr_mujoco_ue/
+
+  # 4. 运行仿真
+  ./scripts/run_sim.sh 0 0  # EmptyWorld 默认机器人
+  ```
+
+  #### **离线安装（无网络）**
+
+  ```bash
+  # 1. 在有网络的机器上下载包
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+
+  # 2. 将 releases/ 目录复制到离线机器
+
+  # 3. 在离线机器上，从本地文件安装
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  # → 从 releases/ 目录安装所有包
+  ```
+
+  #### **后续添加更多地图**
+
+  ```bash
+  # 方式 1: 下载并安装新地图
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+  # → 选择要下载的额外地图
+
+  # 方式 2: 如果文件已在 releases/，直接安装
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  # → 安装 releases/ 目录下所有可用地图
+  ```
+
+  #### **重新安装包**
+
+  ```bash
+  # 从本地 releases/ 目录快速重新安装
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  # → 无需下载，快速安装
+  ```
+
+  ### 💡 脚本选择指南
+
+  **何时使用 `install_chunks.sh`：**
+  - ✅ 首次安装
+  - ✅ 需要从 GitHub 下载最新版本
+  - ✅ 想选择性下载地图包
+  - ✅ 有网络连接
+
+  **何时使用 `install_chunks_local.sh`：**
+  - ✅ 文件已下载到 `releases/` 目录
+  - ✅ 离线安装（无网络）
+  - ✅ 快速重新安装现有包
+  - ✅ 想自动安装所有可用地图
+
+  ### 📁 理解文件位置
+
+  ```
+  matrix/
+  ├── releases/                    # 下载的包（install_chunks.sh 后创建）
+  │   ├── base-0.0.4.tar.gz       # 基础包
+  │   ├── shared-0.0.4.tar.gz     # 共享资源
+  │   └── *.tar.gz                # 地图包
+  │
+  └── src/UeSim/Linux/jszr_mujoco_ue/  # 运行目录（包安装的位置）
+      └── Content/Paks/            # 已安装的 chunk 文件 (.pak, .ucas, .utoc)
+  ```
+
+  **关键要点：**
+  - `releases/` = 下载包的存储位置（源文件）
+  - `src/UeSim/Linux/jszr_mujoco_ue/Content/Paks/` = 运行时位置（已安装的文件）
+  - `install_chunks.sh` 下载到 `releases/` **并**安装到运行目录
+  - `install_chunks_local.sh` 仅从 `releases/` 安装到运行目录
+
+  > **提示：** 保留 `releases/` 目录中的文件以便将来使用。您可以删除它们以节省空间，但如果要重新安装，则需要重新下载。
 
   ---
 
@@ -278,5 +425,30 @@ MATRiX 是一个先进的仿真平台，集成了 **MuJoCo**、**Unreal Engine 5
 
   - [English Documentation](../README.md) - 英文使用指南
   - [Chunk Packages 使用指南](CHUNK_PACKAGES_GUIDE.md) - 模块化打包部署说明
+
+  ## 📦 Chunk Packages 系统
+
+  MATRiX 使用模块化 chunk 包系统，实现灵活的安装：
+
+  - **基础包**（必需）：核心仿真器文件和 EmptyWorld 地图
+  - **共享资源**（推荐）：多个地图共享的资源
+  - **地图包**（可选）：可按需下载的独立地图
+
+  **优势：**
+  - ✅ 只下载需要的内容，节省存储空间
+  - ✅ 快速开始，只需基础包
+  - ✅ 按需扩展，下载特定地图
+  - ✅ 所有包缓存在 `releases/` 目录，支持离线使用
+
+  **安装：**
+  ```bash
+  # 从 GitHub Releases 下载并安装
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+
+  # 或从本地 releases/ 目录安装（如果已下载）
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  ```
+
+  更多详情，请参阅 [Chunk Packages 使用指南](CHUNK_PACKAGES_GUIDE.md)。
 
   ---

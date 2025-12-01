@@ -2,7 +2,7 @@
   <a href="#"><img alt="Forest" src="demo_gif/Forest.png" width="100%"/></a>
   </h1>
 
-<div align="right">
+<div align="center">
 
 [![English](https://img.shields.io/badge/Language-English-blue)](README.md)
 [![中文](https://img.shields.io/badge/语言-中文-red)](docs/README_CN.md)
@@ -18,7 +18,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ```text
   ├── bin/                         # Executable binaries
-  │   └── sim_launcher            # GUI launcher (24MB)
+  │   └── sim_launcher                # GUI launcher (24MB)
   ├── deps/                        # Third-party dependencies
   │   ├── ecal_5.13.3-1ppa1~jammy_amd64.deb
   │   ├── mujoco_3.3.0_x86_64_Linux.deb
@@ -28,16 +28,24 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   │   ├── README_CN.md
   │   └── CHUNK_PACKAGES_GUIDE.md
   ├── scripts/                     # Build and configuration scripts
-  │   ├── build.sh                # One-click build script
-  │   ├── run_sim.sh              # Simulation launch script
+  │   ├── build.sh                    # One-click build script
+  │   ├── run_sim.sh                  # Simulation launch script
   │   ├── build_mc.sh
   │   ├── build_mujoco_sdk.sh
   │   ├── download_uesim.sh
   │   ├── install_deps.sh
   │   ├── modify_config.sh
-  │   └── release_manager/        # Release and package management
-  │       ├── install_chunks.sh
-  │       └── package_chunks_for_release.sh
+  │   └── release_manager/         # Release and package management
+  │       ├── install_chunks.sh              # Download and install from GitHub Releases
+  │       ├── install_chunks_local.sh        # Install from local releases/ directory
+  │       ├── package_chunks_for_release.sh  # Package chunks for release
+  │       ├── upload_to_release.sh           # Upload packages to GitHub Releases
+  │       └── split_large_file.sh            # Split large files (>2GB) for GitHub
+  ├── releases/                    # Downloaded chunk packages (created after installation)
+  │   ├── base-*.tar.gz               # Base package
+  │   ├── shared-*.tar.gz             # Shared resources
+  │   ├── *-*.tar.gz                  # Map packages
+  │   └── manifest-*.json             # Package manifest
   ├── src/
   │   ├── robot_mc/
   │   ├── robot_mujoco/
@@ -81,36 +89,176 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
      ```
      > **Note:** Replace `<version>` with the actual extracted LCM directory name.
 
-  2. **Download MATRiX simulator**
-
-     - **Method 1: Google Drive**  
-       [Google Drive Download Link](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
-
-       **Download via gdown:**
-       ```bash
-       pip install gdown
-       gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
-       ```
-
-     - **Method 2: Baidu Netdisk**  
-       [Baidu Netdisk Link](https://pan.baidu.com/s/1o8UEO1vUxPYmzeiiP9DYgg?pwd=hwqs)  
-
-     - **Method 3: JFrog**  
-       ```bash
-       curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla"  -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"  
-       ```
-      > **Note:** When downloading from the cloud storage links, please ensure you select the latest version for the best compatibility and features.
-    
-  3. **Unzip**
+  2. **Clone MATRiX Repository**
      ```bash
-     unzip <downloaded_filename>
+     git clone https://github.com/Alphabaijinde/matrix.git
+     cd matrix
      ```
 
-  4. **Install Dependencies**
+  3. **Install Dependencies**
      ```bash
      ./scripts/build.sh
      ```
      *(This script will automatically install all required dependencies.)*
+
+  4. **Install Chunk Packages (Modular Installation)**
+
+     MATRiX uses a modular chunk package system that allows you to download only what you need:
+     - **Base Package** (Required): Core files and EmptyWorld map
+     - **Shared Resources** (Recommended): Shared resources used by multiple maps
+     - **Map Packages** (Optional): Individual maps that can be downloaded on demand
+
+     **Automatic Installation (Recommended):**
+     ```bash
+     bash scripts/release_manager/install_chunks.sh 0.0.4
+     ```
+     
+     The script will:
+     - Download the base package (required)
+     - Prompt you to download shared resources (recommended)
+     - Let you select which maps to download interactively
+     - Save all downloaded files to `releases/` directory for future use
+
+     **Available Maps:**
+     - SceneWorld, Town10World, YardWorld, CrowdWorld, VeniceWorld
+     - RunningWorld, HouseWorld, IROSFlatWorld, IROSSlopedWorld
+     - Town10Zombie, IROSFlatWorld2025, IROSSloppedWorld2025
+     - OfficeWorld, Custom
+
+     > **Note:** All downloaded packages are saved in the `releases/` directory. You can use `install_chunks_local.sh` to install additional maps later without re-downloading.
+
+     **Alternative: Manual Download from Cloud Storage**
+     
+     If you prefer to download the full package from cloud storage:
+     - **Google Drive**: [Download Link](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
+       ```bash
+       pip install gdown
+       gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
+       unzip <downloaded_filename>
+       ```
+     - **Baidu Netdisk**: [Download Link](https://pan.baidu.com/s/1o8UEO1vUxPYmzeiiP9DYgg?pwd=hwqs)
+     - **JFrog**:
+       ```bash
+       curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla" -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"
+       unzip matrix.zip
+       ```
+
+  ---
+
+  ## 🛠️ Script Usage Guide
+
+  MATRiX provides various scripts to help you build, install, and run the simulator. Here's how to use them effectively:
+
+  ### 📋 Script Categories
+
+  #### **User Scripts** (For End Users)
+
+  | Script | Purpose | Usage |
+  |--------|---------|-------|
+  | `build.sh` | One-click build and dependency installation | `./scripts/build.sh` |
+  | `run_sim.sh` | Launch simulation | `./scripts/run_sim.sh <robot_type> <map_id>` |
+  | `install_chunks.sh` | Download and install chunk packages from GitHub | `bash scripts/release_manager/install_chunks.sh <version>` |
+  | `install_chunks_local.sh` | Install chunk packages from local releases/ directory | `bash scripts/release_manager/install_chunks_local.sh <version>` |
+
+  #### **Developer Scripts** (For Contributors)
+
+  | Script | Purpose | Usage |
+  |--------|---------|-------|
+  | `build_mc.sh` | Build MC control module | `./scripts/build_mc.sh` |
+  | `build_mujoco_sdk.sh` | Build MuJoCo SDK | `./scripts/build_mujoco_sdk.sh` |
+  | `package_chunks_for_release.sh` | Package chunks for release | `bash scripts/release_manager/package_chunks_for_release.sh <version>` |
+  | `upload_to_release.sh` | Upload packages to GitHub Releases | `bash scripts/release_manager/upload_to_release.sh <version>` |
+  | `split_large_file.sh` | Split large files (>2GB) for GitHub | `bash scripts/release_manager/split_large_file.sh <file_path>` |
+
+  ### 🚀 Typical Workflows
+
+  #### **First-Time Setup (New User)**
+
+  ```bash
+  # 1. Clone the repository
+  git clone https://github.com/Alphabaijinde/matrix.git
+  cd matrix
+
+  # 2. Install dependencies and build
+  ./scripts/build.sh
+
+  # 3. Install chunk packages (download from GitHub)
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+  # → Selectively choose maps to download
+  # → Files are saved to releases/ directory
+  # → Packages are automatically installed to src/UeSim/Linux/jszr_mujoco_ue/
+
+  # 4. Run simulation
+  ./scripts/run_sim.sh 0 0  # EmptyWorld with default robot
+  ```
+
+  #### **Offline Installation (No Internet)**
+
+  ```bash
+  # 1. On a machine with internet, download packages
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+
+  # 2. Copy the releases/ directory to offline machine
+
+  # 3. On offline machine, install from local files
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  # → Installs all packages from releases/ directory
+  ```
+
+  #### **Adding More Maps Later**
+
+  ```bash
+  # Option 1: Download and install new maps
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+  # → Select additional maps to download
+
+  # Option 2: If files already in releases/, just install
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  # → Installs all available maps from releases/
+  ```
+
+  #### **Reinstalling Packages**
+
+  ```bash
+  # Quick reinstall from local releases/ directory
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  # → No download needed, fast installation
+  ```
+
+  ### 💡 Script Selection Guide
+
+  **When to use `install_chunks.sh`:**
+  - ✅ First-time installation
+  - ✅ Need to download latest version from GitHub
+  - ✅ Want to selectively choose maps to download
+  - ✅ Have internet connection
+
+  **When to use `install_chunks_local.sh`:**
+  - ✅ Files already downloaded to `releases/` directory
+  - ✅ Offline installation (no internet)
+  - ✅ Quick reinstall of existing packages
+  - ✅ Want to install all available maps automatically
+
+  ### 📁 Understanding File Locations
+
+  ```
+  matrix/
+  ├── releases/                    # Downloaded packages (created after install_chunks.sh)
+  │   ├── base-0.0.4.tar.gz       # Base package
+  │   ├── shared-0.0.4.tar.gz     # Shared resources
+  │   └── *.tar.gz                # Map packages
+  │
+  └── src/UeSim/Linux/jszr_mujoco_ue/  # Runtime directory (where packages are installed)
+      └── Content/Paks/            # Installed chunk files (.pak, .ucas, .utoc)
+  ```
+
+  **Key Points:**
+  - `releases/` = Storage for downloaded packages (source files)
+  - `src/UeSim/Linux/jszr_mujoco_ue/Content/Paks/` = Runtime location (installed files)
+  - `install_chunks.sh` downloads to `releases/` AND installs to runtime directory
+  - `install_chunks_local.sh` only installs from `releases/` to runtime directory
+
+  > **Tip:** Keep files in `releases/` directory for future use. You can delete them to save space, but you'll need to re-download if you want to reinstall.
 
   ---
 
@@ -283,5 +431,30 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   - [中文文档](docs/README_CN.md) - 中文使用指南
   - [Chunk Packages 使用指南](docs/CHUNK_PACKAGES_GUIDE.md) - 模块化打包部署说明
+
+  ## 📦 Chunk Packages System
+
+  MATRiX uses a modular chunk package system for flexible installation:
+
+  - **Base Package** (Required): Core simulator files and EmptyWorld map
+  - **Shared Resources** (Recommended): Shared assets used by multiple maps
+  - **Map Packages** (Optional): Individual maps that can be downloaded on demand
+
+  **Benefits:**
+  - ✅ Download only what you need, saving storage space
+  - ✅ Quick start with just the base package
+  - ✅ Expand on demand by downloading specific maps
+  - ✅ All packages cached in `releases/` directory for offline use
+
+  **Installation:**
+  ```bash
+  # Download and install from GitHub Releases
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+
+  # Or install from local releases/ directory (if already downloaded)
+  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  ```
+
+  For more details, see [Chunk Packages Guide](docs/CHUNK_PACKAGES_GUIDE.md).
 
   ---

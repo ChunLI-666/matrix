@@ -3,8 +3,14 @@
 
 # Release package files (upload to GitHub Releases instead of Git)
 # Assets are downloaded directly to releases/ directory
+# Developers use upload_to_release.sh to upload these files
 releases/*.tar.gz
+releases/*.tar
 releases/*.json
+releases/*.merge.sh
+releases/*.part*
+releases/*.sha256
+releases/*.bak
 releases/chunks/
 !releases/.gitkeep
 

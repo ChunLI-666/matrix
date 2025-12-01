@@ -1,3 +1,1 @@
-# Git LFS 不再使用，大文件通过 GitHub Releases 分发
-# 所有大文件已在 .gitignore 中排除
 * !text !filter !merge !diff
