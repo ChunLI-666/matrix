@@ -52,6 +52,8 @@
 | 12    | IROSFLAT2025 | IROS competition map 3 |
 | 13    | IROSSLOP2025 | IROS competition map 4 |
 | 14    | OFFICE       | Two-story office building scene |
+| 15    | 3DGS         | 3DGS Reconstruction Map |
+| 16    | Moon         | Moon Surface Simulation Map, Dynamic Ground Surface |
 
 
 
@@ -131,4 +133,14 @@
 ## OFFICE Map
 <h1 title="OFFICE Map">
     <a href="#"><img alt="OFFICE Map" src="../demo_gif/Maps/OFFICE.png" width="600px"/></a>
+</h1>
+
+## 3DGS Map
+<h1 title="3DGS Map">
+    <a href="#"><img alt="3DGS Map" src="../demo_gif/Maps/3DGS.png" width="600px"/></a>
+</h1>
+
+## Moon Map
+<h1 title="Moon Map">
+    <a href="#"><img alt="Moon Map" src="../demo_gif/Maps/Moon.png" width="600px"/></a>
 </h1>

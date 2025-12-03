@@ -23,7 +23,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   │   └── modify_config.sh
   ├── docs/                        # Documentation and guides
   ├── config/                      # Robot and sensor configuration files
-  │   ├── scene/                   # Custom scene files
+  ├── scene/                       # Custom scene files
+  ├── dynamicmaps/                # Dynamic ground bin files
   ├── src/
   │   ├── robot_mc/
   │   ├── robot_mujoco/
@@ -77,21 +78,18 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   2. **Download MATRiX simulator**
 
      - **Method 1: Google Drive**  
-       [Google Drive Download Link](https://drive.google.com/file/d/12rQuKy8xM15gcIN_T3G5cg2NeqdtSKkW/view?usp=sharing)
+       [Google Drive Download Link](https://drive.google.com/file/d/1UUepVneqrK2r_-5a1rUPmYd5wiqWbBp0/view?usp=sharing)
 
        **Download via gdown:**
        ```bash
        pip install gdown
-       gdown https://drive.google.com/uc?id=12rQuKy8xM15gcIN_T3G5cg2NeqdtSKkW
+       gdown https://drive.google.com/uc?id=1UUepVneqrK2r_-5a1rUPmYd5wiqWbBp0
        ```
        
      - **Method 2: Baidu Netdisk**  
-       [Baidu Netdisk Link](https://pan.baidu.com/s/1TBVFYA75YVPeR4KBMY1t2g?pwd=a3r6)  
+       [Baidu Netdisk Link](https://pan.baidu.com/s/1thnDgDfQkmIqxnt-_7C4Cw?pwd=sicu)  
 
-     - **Method 3: JFrog**  
-       ```bash
-       curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla"  -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"  
-       ```
+
       > **Note:** When downloading from the cloud storage links, please ensure you select the latest version for the best compatibility and features.
 
       > **Previous version link**: [Link](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
@@ -122,7 +120,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   </div>
 
-  > **Note:** Map Descriptions [doc](docs/README_1.md).
+  > **Note:** [Map Descriptions](docs/README_1.md).
 
   > **Note:** The above screenshots showcase high-fidelity UE5 rendering for robotics and reinforcement learning experiments.
 
@@ -170,7 +168,6 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | Jump Forward                        | Hold **RB** + **Y**                     |
   | Jump in Place                       | Hold **RB** + **X**                     |
   | Somersault                          | Hold **RB** + **B**                     |
-
   
   ## ⌨️ Remote Controller Instructions (Keyboard Control Guide)
 
@@ -180,8 +177,10 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | Sit                                 | Space                                   |
   | Move Forward / Back / Left / Right  | W / S / A / D                           |
   | Rotate Left / Right                 | Q / E                                   |
+  | Start                               | Enter                                   |
 
   Press the **V** key to toggle between free camera and robot view.  
+
   Hold the **left mouse button** to temporarily switch to free camera mode.
 
   ---
@@ -302,6 +301,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   - [x] IROS competition map(4 maps)
   - [x] Support for third-party quadruped robot models
   - [x] Support for custom scene based on json file
+  - [x] Add 3DGS reconstruction Map
+  - [x] Add Moon map based on dynamic ground
   - [ ] Add multi-robot simulation capabilities
 
   
