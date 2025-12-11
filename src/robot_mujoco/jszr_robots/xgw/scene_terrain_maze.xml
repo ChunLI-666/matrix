@@ -1,5 +1,5 @@
 <mujoco model="XGW scene">
-  <include file="xg_wheel.xml" />
+  <include file="xgw.xml" />
   <!-- <include file="generated_model.xml"/> -->
 
   <statistic center="0 0 0.5" extent="100"/>

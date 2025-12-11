@@ -1,3 +1,2 @@
-.vscode
-build
-!build/jszr_mujoco
+./simulate/build
+simulate/build

@@ -42,35 +42,58 @@
     <material name="white" rgba="1 1 1 1" />
     <material name="gray" rgba="0.671705 0.692426 0.774270 1" />
 
-    <mesh file="base_0.obj" />
-    <mesh file="base_1.obj" />
-    <mesh file="base_2.obj" />
-    <mesh file="base_3.obj" />
-    <mesh file="base_4.obj" />
-    <mesh file="hip_0.obj" />
-    <mesh file="hip_1.obj" />
-    <mesh file="thigh_0.obj" />
-    <mesh file="thigh_1.obj" />
-    <mesh file="thigh_mirror_0.obj" />
-    <mesh file="thigh_mirror_1.obj" />
-    <mesh file="calf_0.obj" />
-    <mesh file="calf_1.obj" />
-    <mesh file="calf_mirror_0.obj" />
-    <mesh file="calf_mirror_1.obj" />
-    <mesh file="foot.obj" />
+    <mesh name="base_0_LINK" file="base_0_LINK.obj" />
+    <mesh name="base_1_LINK" file="base_1_LINK.obj" />
+    <mesh name="base_2_LINK" file="base_2_LINK.obj" />
+    <mesh name="base_3_LINK" file="base_3_LINK.obj" />
+    <mesh name="base_4_BASE_LINK" file="base_4_BASE_LINK.obj" />
+
+    <mesh name="FL_hip_0_LINK" file="hip_0_LINK.obj" />
+    <mesh name="FL_hip_1_LINK" file="hip_1_LINK.obj" />
+    <mesh name="FR_hip_0_LINK" file="hip_0_LINK.obj" />
+    <mesh name="FR_hip_1_LINK" file="hip_1_LINK.obj" />
+    <mesh name="RL_hip_0_LINK" file="hip_0_LINK.obj" />
+    <mesh name="RL_hip_1_LINK" file="hip_1_LINK.obj" />
+    <mesh name="RR_hip_0_LINK" file="hip_0_LINK.obj" />
+    <mesh name="RR_hip_1_LINK" file="hip_1_LINK.obj" />
+
+    <mesh name="FL_thigh_0_LINK" file="thigh_0_LINK.obj" />
+    <mesh name="FL_thigh_1_LINK" file="thigh_1_LINK.obj" />
+    <mesh name="RL_thigh_0_LINK" file="thigh_0_LINK.obj" />
+    <mesh name="RL_thigh_1_LINK" file="thigh_1_LINK.obj" />
+
+    <mesh name="FR_thigh_mirror_0_LINK" file="thigh_mirror_0_LINK.obj" />
+    <mesh name="FR_thigh_mirror_1_LINK" file="thigh_mirror_1_LINK.obj" />
+    <mesh name="RR_thigh_mirror_0_LINK" file="thigh_mirror_0_LINK.obj" />
+    <mesh name="RR_thigh_mirror_1_LINK" file="thigh_mirror_1_LINK.obj" />
+    
+    <mesh name="FL_calf_0_LINK" file="calf_0_LINK.obj" />
+    <mesh name="FL_calf_1_LINK" file="calf_1_LINK.obj" />
+    <mesh name="RL_calf_0_LINK" file="calf_0_LINK.obj" />
+    <mesh name="RL_calf_1_LINK" file="calf_1_LINK.obj" />
+
+    <mesh name="FR_calf_mirror_0_LINK" file="calf_mirror_0_LINK.obj" />
+    <mesh name="FR_calf_mirror_1_LINK" file="calf_mirror_1_LINK.obj" />
+    <mesh name="RR_calf_mirror_0_LINK" file="calf_mirror_0_LINK.obj" />
+    <mesh name="RR_calf_mirror_1_LINK" file="calf_mirror_1_LINK.obj" />
+
+    <mesh name="FL_foot_LINK" file="foot_LINK.obj" />
+    <mesh name="FR_foot_LINK" file="foot_LINK.obj" />
+    <mesh name="RL_foot_LINK" file="foot_LINK.obj" />
+    <mesh name="RR_foot_LINK" file="foot_LINK.obj" />
   </asset>
 
   <worldbody>
-    <body name="base_link" pos="0 0 0.445" childclass="go2">
+    <body name="base_link" pos="0 0 0.65" childclass="go2">
       <inertial pos="0.021112 0 -0.005366" quat="-0.000543471 0.713435 -0.00173769 0.700719"
         mass="6.921"
         diaginertia="0.107027 0.0980771 0.0244531" />
       <freejoint />
-      <geom mesh="base_0" material="black" class="visual" />
-      <geom mesh="base_1" material="black" class="visual" />
-      <geom mesh="base_2" material="black" class="visual" />
-      <geom mesh="base_3" material="white" class="visual" />
-      <geom mesh="base_4" material="gray" class="visual" />
+      <geom mesh="base_0_LINK" material="black" class="visual" />
+      <geom mesh="base_1_LINK" material="black" class="visual" />
+      <geom mesh="base_2_LINK" material="black" class="visual" />
+      <geom mesh="base_3_LINK" material="white" class="visual" />
+      <geom mesh="base_4_BASE_LINK" material="gray" class="visual" />
       <geom size="0.1881 0.04675 0.057" type="box" class="collision" />
       <geom size="0.05 0.045" pos="0.285 0 0.01" type="cylinder" class="collision" />
       <geom size="0.047" pos="0.293 0 -0.06" class="collision" />
@@ -81,16 +104,16 @@
           mass="0.678"
           diaginertia="0.00088403 0.000596003 0.000479967" />
         <joint name="FL_hip_joint" class="abduction" />
-        <geom mesh="hip_0" material="metal" class="visual" />
-        <geom mesh="hip_1" material="gray" class="visual" />
+        <geom mesh="FL_hip_0_LINK" material="metal" class="visual" />
+        <geom mesh="FL_hip_1_LINK" material="gray" class="visual" />
         <geom size="0.046 0.02" pos="0 0.08 0" quat="1 1 0 0" type="cylinder" class="collision" />
         <body name="FL_thigh" pos="0 0.0955 0">
           <inertial pos="-0.00374 -0.0223 -0.0327" quat="0.829533 0.0847635 -0.0200632 0.551623"
             mass="1.152"
             diaginertia="0.00594973 0.00584149 0.000878787" />
           <joint name="FL_thigh_joint" class="front_hip" />
-          <geom mesh="thigh_0" material="metal" class="visual" />
-          <geom mesh="thigh_1" material="gray" class="visual" />
+          <geom mesh="FL_thigh_0_LINK" material="metal" class="visual" />
+          <geom mesh="FL_thigh_1_LINK" material="gray" class="visual" />
           <geom size="0.1065 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0"
             type="box" class="collision" />
           <body name="FL_calf" pos="0 0 -0.213">
@@ -98,13 +121,13 @@
               quat="0.710672 0.00154099 -0.00450087 0.703508"
               mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
             <joint name="FL_calf_joint" class="knee" />
-            <geom mesh="calf_0" material="gray" class="visual" />
-            <geom mesh="calf_1" material="black" class="visual" />
+            <geom mesh="FL_calf_0_LINK" material="gray" class="visual" />
+            <geom mesh="FL_calf_1_LINK" material="black" class="visual" />
             <geom size="0.012 0.06" pos="0.008 0 -0.06" quat="0.994493 0 -0.104807 0"
               type="cylinder" class="collision" />
             <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0"
               type="cylinder" class="collision" />
-            <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+            <geom pos="0 0 -0.213" mesh="FL_foot_LINK" class="visual" material="black" />
             <geom name="FL" class="foot" />
             <body name="FL_foot" pos="0 0 -0.213" />
           </body>
@@ -115,8 +138,8 @@
           mass="0.678"
           diaginertia="0.00088403 0.000596003 0.000479967" />
         <joint name="FR_hip_joint" class="abduction" />
-        <geom mesh="hip_0" material="metal" class="visual" quat="4.63268e-05 1 0 0" />
-        <geom mesh="hip_1" material="gray" class="visual" quat="4.63268e-05 1 0 0" />
+        <geom mesh="FR_hip_0_LINK" material="metal" class="visual" quat="4.63268e-05 1 0 0" />
+        <geom mesh="FR_hip_1_LINK" material="gray" class="visual" quat="4.63268e-05 1 0 0" />
         <geom size="0.046 0.02" pos="0 -0.08 0" quat="0.707107 0.707107 0 0" type="cylinder"
           class="collision" />
         <body name="FR_thigh" pos="0 -0.0955 0">
@@ -124,8 +147,8 @@
             mass="1.152"
             diaginertia="0.00594973 0.00584149 0.000878787" />
           <joint name="FR_thigh_joint" class="front_hip" />
-          <geom mesh="thigh_mirror_0" material="metal" class="visual" />
-          <geom mesh="thigh_mirror_1" material="gray" class="visual" />
+          <geom mesh="FR_thigh_mirror_0_LINK" material="metal" class="visual" />
+          <geom mesh="FR_thigh_mirror_1_LINK" material="gray" class="visual" />
           <geom size="0.1065 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0"
             type="box" class="collision" />
           <body name="FR_calf" pos="0 0 -0.213">
@@ -133,13 +156,13 @@
               quat="0.703508 -0.00450087 0.00154099 0.710672"
               mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
             <joint name="FR_calf_joint" class="knee" />
-            <geom mesh="calf_mirror_0" material="gray" class="visual" />
-            <geom mesh="calf_mirror_1" material="black" class="visual" />
+            <geom mesh="FR_calf_mirror_0_LINK" material="gray" class="visual" />
+            <geom mesh="FR_calf_mirror_1_LINK" material="black" class="visual" />
             <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0"
               type="cylinder" class="collision" />
             <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0"
               type="cylinder" class="collision" />
-            <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+            <geom pos="0 0 -0.213" mesh="FR_foot_LINK" class="visual" material="black" />
             <geom name="FR" class="foot" />
             <body name="FR_foot" pos="0 0 -0.213" />
           </body>
@@ -150,8 +173,8 @@
           mass="0.678"
           diaginertia="0.00088403 0.000596003 0.000479967" />
         <joint name="RL_hip_joint" class="abduction" />
-        <geom mesh="hip_0" material="metal" class="visual" quat="4.63268e-05 0 1 0" />
-        <geom mesh="hip_1" material="gray" class="visual" quat="4.63268e-05 0 1 0" />
+        <geom mesh="RL_hip_0_LINK" material="metal" class="visual" quat="4.63268e-05 0 1 0" />
+        <geom mesh="RL_hip_1_LINK" material="gray" class="visual" quat="4.63268e-05 0 1 0" />
         <geom size="0.046 0.02" pos="0 0.08 0" quat="0.707107 0.707107 0 0" type="cylinder"
           class="collision" />
         <body name="RL_thigh" pos="0 0.0955 0">
@@ -159,8 +182,8 @@
             mass="1.152"
             diaginertia="0.00594973 0.00584149 0.000878787" />
           <joint name="RL_thigh_joint" class="back_hip" />
-          <geom mesh="thigh_0" material="metal" class="visual" />
-          <geom mesh="thigh_1" material="gray" class="visual" />
+          <geom mesh="RL_thigh_0_LINK" material="metal" class="visual" />
+          <geom mesh="RL_thigh_1_LINK" material="gray" class="visual" />
           <geom size="0.1065 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0"
             type="box" class="collision" />
           <body name="RL_calf" pos="0 0 -0.213">
@@ -168,13 +191,13 @@
               quat="0.710672 0.00154099 -0.00450087 0.703508"
               mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
             <joint name="RL_calf_joint" class="knee" />
-            <geom mesh="calf_0" material="gray" class="visual" />
-            <geom mesh="calf_1" material="black" class="visual" />
+            <geom mesh="RL_calf_0_LINK" material="gray" class="visual" />
+            <geom mesh="RL_calf_1_LINK" material="black" class="visual" />
             <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0"
               type="cylinder" class="collision" />
             <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0"
               type="cylinder" class="collision" />
-            <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+            <geom pos="0 0 -0.213" mesh="RL_foot_LINK" class="visual" material="black" />
             <geom name="RL" class="foot" />
             <body name="RL_foot" pos="0 0 -0.213" />
           </body>
@@ -185,9 +208,9 @@
           mass="0.678"
           diaginertia="0.00088403 0.000596003 0.000479967" />
         <joint name="RR_hip_joint" class="abduction" />
-        <geom mesh="hip_0" material="metal" class="visual"
+        <geom mesh="RR_hip_0_LINK" material="metal" class="visual"
           quat="2.14617e-09 4.63268e-05 4.63268e-05 -1" />
-        <geom mesh="hip_1" material="gray" class="visual"
+        <geom mesh="RR_hip_1_LINK" material="gray" class="visual"
           quat="2.14617e-09 4.63268e-05 4.63268e-05 -1" />
         <geom size="0.046 0.02" pos="0 -0.08 0" quat="0.707107 0.707107 0 0" type="cylinder"
           class="collision" />
@@ -196,8 +219,8 @@
             mass="1.152"
             diaginertia="0.00594973 0.00584149 0.000878787" />
           <joint name="RR_thigh_joint" class="back_hip" />
-          <geom mesh="thigh_mirror_0" material="metal" class="visual" />
-          <geom mesh="thigh_mirror_1" material="gray" class="visual" />
+          <geom mesh="RR_thigh_mirror_0_LINK" material="metal" class="visual" />
+          <geom mesh="RR_thigh_mirror_1_LINK" material="gray" class="visual" />
           <geom size="0.1065 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0"
             type="box" class="collision" />
           <body name="RR_calf" pos="0 0 -0.213">
@@ -205,13 +228,13 @@
               quat="0.703508 -0.00450087 0.00154099 0.710672"
               mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
             <joint name="RR_calf_joint" class="knee" />
-            <geom mesh="calf_mirror_0" material="gray" class="visual" />
-            <geom mesh="calf_mirror_1" material="black" class="visual" />
+            <geom mesh="RR_calf_mirror_0_LINK" material="gray" class="visual" />
+            <geom mesh="RR_calf_mirror_1_LINK" material="black" class="visual" />
             <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0"
               type="cylinder" class="collision" />
             <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0"
               type="cylinder" class="collision" />
-            <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+            <geom pos="0 0 -0.213" mesh="RR_foot_LINK" class="visual" material="black" />
             <geom name="RR" class="foot" />
             <body name="RR_foot" pos="0 0 -0.213" />
           </body>
@@ -283,8 +306,4 @@
     <framelinvel name="frame_vel" objtype="site" objname="imu" />
   </sensor>
 
-  <keyframe>
-    <key name="home" qpos="0 0 0.27 1 0 0 0 0 0.9 -1.8 0 0.9 -1.8 0 0.9 -1.8 0 0.9 -1.8"
-      ctrl="0 0.9 -1.8 0 0.9 -1.8 0 0.9 -1.8 0 0.9 -1.8" />
-  </keyframe>
 </mujoco>

@@ -22,7 +22,7 @@
   </asset>
 
   <worldbody>
-    <body name="base_link" pos="0 0 0.5">
+    <body name="base_link" pos="0 0 0.65">
       <inertial pos="-0.001406 0.00345 -0.004835" quat="-0.00434043 0.706832 -0.00540402 0.707347" mass="17.033" diaginertia="0.695866 0.661855 0.0928814"/>
       <freejoint />
       <site name="imu" pos="0.0 0 0.0" />
@@ -206,8 +206,4 @@
       <framelinvel name="frame_vel" objtype="site" objname="imu" />
   </sensor>
 
-  <keyframe>
-      <key name="home" qpos="0 0 0.52 1 0 0 0 0 0.6 -1.2 0 0 0.6 -1.2 0 0 -0.6 1.2 0 0 -0.6 1.2 0"
-          ctrl="0 0.9 -1.8 0 0 0.9 -1.8 0 0 0.9 -1.8 0 0 0.9 -1.8 0" />
-  </keyframe>
 </mujoco>

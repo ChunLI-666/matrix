@@ -159,7 +159,6 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | `build_mujoco_sdk.sh` | Build MuJoCo SDK | `./scripts/build_mujoco_sdk.sh` |
   | `package_chunks_for_release.sh` | Package chunks for release | `bash scripts/release_manager/package_chunks_for_release.sh <version>` |
   | `upload_to_release.sh` | Upload packages to GitHub Releases (with auto-consistency check and publish) | `bash scripts/release_manager/upload_to_release.sh <version>` |
-  | `commit_and_push.sh` | Commit and push chunk package changes | `bash scripts/release_manager/commit_and_push.sh <version>` |
   | `split_large_file.sh` | Split large files (>2GB) for GitHub | `bash scripts/release_manager/split_large_file.sh <file_path>` |
 
   ### 🚀 Typical Workflows

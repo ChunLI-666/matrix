@@ -160,7 +160,6 @@ MATRiX 提供了多种脚本来帮助您构建、安装和运行仿真器。以�
 | `build_mujoco_sdk.sh` | 构建 MuJoCo SDK | `./scripts/build_mujoco_sdk.sh` |
 | `package_chunks_for_release.sh` | 打包分块包用于发布 | `bash scripts/release_manager/package_chunks_for_release.sh <版本>` |
 | `upload_to_release.sh` | 上传包到 GitHub Releases（包含自动一致性检查和发布功能） | `bash scripts/release_manager/upload_to_release.sh <版本>` |
-| `commit_and_push.sh` | 提交并推送分块包相关更改 | `bash scripts/release_manager/commit_and_push.sh <版本>` |
 | `split_large_file.sh` | 分割大文件（>2GB）用于 GitHub | `bash scripts/release_manager/split_large_file.sh <文件路径>` |
 
 ### 🚀 典型工作流程

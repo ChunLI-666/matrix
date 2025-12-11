@@ -15,7 +15,7 @@
   <worldbody>
     <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
     <geom name="floor" pos="0 0.0 0.01" size="0 0 0.01" type="plane" material="groundplane" />
-<geom name="BP_OBS_Cube_1_C_2147482147" type="box" size="0.5 0.5 0.5" pos="10.0 -6.0 0.5" quat="1.0 0.0 0.0 0.0" rgba="0.8 0.2 0.2 1" solref="0.02 1" solimp="0.9 0.95 0.001"/>
-<geom name="BP_OBS_Cube_2_C_2147482146" type="box" size="0.5 0.5 0.5" pos="10.0 6.0 0.5" quat="1.0 0.0 0.0 0.0" rgba="0.8 0.2 0.2 1" solref="0.02 1" solimp="0.9 0.95 0.001"/>
+<geom name="BP_Scene_Cube_1_C_2147482165" type="box" size="0.5 0.5 0.5" pos="10.0 -6.0 0.5" quat="1.0 0.0 0.0 0.0" rgba="0.8 0.2 0.2 1" solref="0.02 1" solimp="0.9 0.95 0.001"/>
+<geom name="BP_Scene_Cube_2_C_2147482164" type="box" size="0.5 0.5 0.5" pos="10.0 6.0 0.5" quat="1.0 0.0 0.0 0.0" rgba="0.8 0.2 0.2 1" solref="0.02 1" solimp="0.9 0.95 0.001"/>
     </worldbody>
 </mujoco>
