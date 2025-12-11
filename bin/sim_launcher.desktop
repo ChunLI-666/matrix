@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=MATRiX Simulation Launcher
+Name[zh_CN]=MATRiX 仿真启动器
+Comment=Launch MATRiX robot simulation with selected robot and map
+Comment[zh_CN]=启动 MATRiX 机器人仿真，选择机器人和地图
+Exec=sim_launcher_qt
+Icon=sim_launcher
+Path=
+Terminal=false
+Categories=Development;Simulation;Science;
+StartupNotify=true
+MimeType=
+

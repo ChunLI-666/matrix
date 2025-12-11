@@ -8,17 +8,14 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# 加载公共函数库
+source "${SCRIPT_DIR}/common.sh"
 cd "$PROJECT_ROOT"
 
-VERSION="${1:-2.0.8}"
+VERSION="${1:-0.0.4}"
 REPO="Alphabaijinde/matrix"
 RELEASE_DIR="releases"
 MAX_SIZE=2147483648  # 2GB in bytes (GitHub Releases limit)
-
-log() {
-    echo "[$(date '+%H:%M:%S')] $*"
-}
 
 # 函数：显示上传进度
 show_upload_progress() {
@@ -74,16 +71,7 @@ upload_file_with_progress() {
     fi
 }
 
-log_section() {
-    echo ""
-    echo "===== $* ====="
-    echo "$(printf '=%.0s' {1..60})"
-}
-
-error_exit() {
-    log "ERROR: $*"
-    exit 1
-}
+# log_section() 和 error_exit() 已在 common.sh 中定义
 
 # 检查 GitHub CLI
 if ! command -v gh &> /dev/null; then
@@ -109,7 +97,7 @@ fi
 
 log "✓ GitHub CLI 已就绪"
 
-log_section "检查要上传的文件"
+log_section "[1] 检查要上传的文件"
 
 # 检查 Release 目录
 if [ ! -d "$RELEASE_DIR" ]; then
@@ -129,22 +117,46 @@ log "扫描需要上传的文件..."
 files_to_upload=()
 declare -A file_sizes  # 关联数组存储文件大小
 
-# 基础包和共享包
-for file in "${RELEASE_DIR}/base-${VERSION}.tar.gz" "${RELEASE_DIR}/shared-${VERSION}.tar.gz"; do
-    if [ -f "$file" ]; then
-        files_to_upload+=("$file")
-        size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
-        file_sizes["$file"]=$size
+# 基础包
+if [ -f "${RELEASE_DIR}/base-${VERSION}.tar.gz" ]; then
+    files_to_upload+=("${RELEASE_DIR}/base-${VERSION}.tar.gz")
+    size=$(stat -c%s "${RELEASE_DIR}/base-${VERSION}.tar.gz" 2>/dev/null || stat -f%z "${RELEASE_DIR}/base-${VERSION}.tar.gz" 2>/dev/null || echo 0)
+    file_sizes["${RELEASE_DIR}/base-${VERSION}.tar.gz"]=$size
+fi
+
+# 共享包（检查是否需要分片）
+if [ -f "${RELEASE_DIR}/shared-${VERSION}.tar.gz" ]; then
+    size=$(stat -c%s "${RELEASE_DIR}/shared-${VERSION}.tar.gz" 2>/dev/null || stat -f%z "${RELEASE_DIR}/shared-${VERSION}.tar.gz" 2>/dev/null || echo 0)
+    if [ "$size" -gt "$MAX_SIZE" ]; then
+        # 超过 2GB，检查是否有分片文件
+        if [ -f "${RELEASE_DIR}/shared-${VERSION}.tar.part000" ]; then
+            # 添加分片文件
+            for part_file in "${RELEASE_DIR}/shared-${VERSION}.tar.part"* "${RELEASE_DIR}/shared-${VERSION}.tar.merge.sh" "${RELEASE_DIR}/shared-${VERSION}.tar.sha256"; do
+                if [ -f "$part_file" ]; then
+                    files_to_upload+=("$part_file")
+                    part_size=$(stat -c%s "$part_file" 2>/dev/null || stat -f%z "$part_file" 2>/dev/null || echo 0)
+                    file_sizes["$part_file"]=$part_size
+                fi
+            done
+        else
+            # 没有分片文件，跳过（需要先分片）
+            log "⚠️  shared-${VERSION}.tar.gz 超过 2GB 但未分片，跳过"
+        fi
+    else
+        # 小于 2GB，直接添加
+        files_to_upload+=("${RELEASE_DIR}/shared-${VERSION}.tar.gz")
+        file_sizes["${RELEASE_DIR}/shared-${VERSION}.tar.gz"]=$size
     fi
-done
+fi
 
 # 地图包
 for file in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
     if [ -f "$file" ] && [[ "$file" != *"base-${VERSION}.tar.gz" ]] && [[ "$file" != *"shared-${VERSION}.tar.gz" ]]; then
         filename=$(basename "$file")
         base_name="${filename%.tar.gz}"
-        # 如果文件超过2GB，检查是否有分片文件
         size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
+        
+        # 如果文件超过2GB，检查是否有分片文件
         if [ "$size" -gt "$MAX_SIZE" ] && { [ -f "${RELEASE_DIR}/${base_name}.part000" ] || [ -f "${RELEASE_DIR}/${base_name}.tar.part000" ]; }; then
             # 已分割，添加分片文件而不是原始文件
             # 尝试两种命名模式
@@ -196,7 +208,7 @@ if gh release view "v${VERSION}" --repo "$REPO" &>/dev/null; then
     fi
 fi
 
-log_section "上传文件到 GitHub Release v${VERSION}"
+log_section "[2] 上传文件到 GitHub Release v${VERSION}"
 
 # 检查 Release 是否存在，不存在则创建
 if ! gh release view "v${VERSION}" --repo "$REPO" &>/dev/null; then
@@ -219,12 +231,36 @@ if ! gh release view "v${VERSION}" --repo "$REPO" &>/dev/null; then
     uploaded_files_info=""
 fi
 
-# 函数：刷新已上传文件信息
+# 函数：刷新已上传文件信息（包含文件名和大小）
 refresh_uploaded_files() {
     uploaded_files_info=$(gh release view "v${VERSION}" --repo "$REPO" --json assets --jq '.assets[] | "\(.name)|\(.size)"' 2>/dev/null || echo "")
 }
 
-# 函数：检查文件是否已上传且完整
+# 函数：从 manifest.json 获取文件的 SHA256
+get_sha256_from_manifest() {
+    local filename="$1"
+    local manifest_file="${RELEASE_DIR}/manifest-${VERSION}.json"
+    
+    if [ ! -f "$manifest_file" ] || ! command -v jq &> /dev/null; then
+        echo ""
+        return
+    fi
+    
+    # 尝试从 manifest 中获取 SHA256
+    local sha256=$(jq -r --arg f "$filename" '
+        .packages.base.sha256 // empty |
+        if . == empty then
+            .packages.shared.sha256 // empty |
+            if . == empty then
+                (.packages.maps[] | select(.file == $f) | .sha256) // empty
+            else . end
+        else . end
+    ' "$manifest_file" 2>/dev/null || echo "")
+    
+    echo "$sha256"
+}
+
+# 函数：检查文件是否已上传且与本地一致
 check_file_uploaded() {
     local file="$1"
     local filename=$(basename "$file")
@@ -240,76 +276,38 @@ check_file_uploaded() {
     fi
     
     # 检查文件名和大小是否匹配
+    local found=false
+    local remote_size=0
     while IFS='|' read -r name size || [ -n "$name" ]; do
-        if [ "$name" == "$filename" ] && [ "$size" == "$local_size" ]; then
-            return 0  # 已上传且完整
+        if [ "$name" == "$filename" ]; then
+            found=true
+            remote_size=$size
+            break
         fi
     done <<< "$uploaded_files_info"
     
-    return 1  # 未上传或不完整
+    if [ "$found" = false ]; then
+        return 1  # 文件不存在
+    fi
+    
+    # 大小必须匹配
+    if [ "$remote_size" != "$local_size" ]; then
+        return 1  # 大小不匹配
+    fi
+    
+    # 如果 manifest.json 中有 SHA256，也进行校验（可选，更严格）
+    # 注意：GitHub Releases API 不直接提供 SHA256，所以这里只检查大小
+    # 如果需要更严格的校验，可以下载文件后计算 SHA256，但这会增加时间
+    
+    return 0  # 已上传且大小匹配
 }
-
-# 上传基础包
-log_section "[1] 上传基础包"
-base_file="${RELEASE_DIR}/base-${VERSION}.tar.gz"
-if [ -f "$base_file" ]; then
-    file_size=${file_sizes["$base_file"]:-0}
-    file_size_mb=$((file_size / 1024 / 1024))
-    
-    if check_file_uploaded "$base_file"; then
-        log "✓ 基础包已上传且完整，跳过: base-${VERSION}.tar.gz (${file_size_mb}MB)"
-    elif [ "$file_size" -gt "$MAX_SIZE" ]; then
-        log "⚠️  跳过基础包: base-${VERSION}.tar.gz (${file_size_mb}MB, 超过 2GB 限制)"
-        log "   提示: 大文件需要使用其他方式上传（如 Google Drive, Baidu Netdisk）"
-    else
-        ((current_upload_num++))
-        if upload_file_with_progress "$base_file" "$current_upload_num" "$files_to_upload_count"; then
-            refresh_uploaded_files  # 刷新已上传文件列表
-        fi
-    fi
-else
-    log "⚠️  基础包文件不存在，跳过"
-fi
-
-# 上传共享资源包
-log_section "[2] 上传共享资源包"
-shared_file="${RELEASE_DIR}/shared-${VERSION}.tar.gz"
-if [ -f "$shared_file" ]; then
-    file_size=${file_sizes["$shared_file"]:-0}
-    file_size_mb=$((file_size / 1024 / 1024))
-    
-    if check_file_uploaded "$shared_file"; then
-        log "✓ 共享资源包已上传且完整，跳过: shared-${VERSION}.tar.gz (${file_size_mb}MB)"
-    elif [ "$file_size" -gt "$MAX_SIZE" ]; then
-        log "⚠️  跳过共享资源包: shared-${VERSION}.tar.gz (${file_size_mb}MB, 超过 2GB 限制)"
-        log "   提示: 大文件需要使用其他方式上传"
-    else
-        ((current_upload_num++))
-        if upload_file_with_progress "$shared_file" "$current_upload_num" "$files_to_upload_count"; then
-            refresh_uploaded_files  # 刷新已上传文件列表
-        fi
-    fi
-else
-    log "⚠️  共享资源包文件不存在，跳过"
-fi
-
-# 上传地图包和其他文件
-log_section "[3] 上传地图包和其他文件"
-map_count=0
-skip_count=0
-split_count=0
-skipped_count=0
-SPLIT_SCRIPT="${SCRIPT_DIR}/split_large_file.sh"
 
 # 计算需要上传的文件总数（排除已上传的）
 files_to_upload_count=0
 for file in "${files_to_upload[@]}"; do
     if [ -f "$file" ]; then
-        if ! check_file_uploaded "$file" 2>/dev/null || true; then
-            # 如果 check_file_uploaded 返回 1（未上传），则计数
-            if ! check_file_uploaded "$file" 2>/dev/null; then
-                ((files_to_upload_count++)) || true
-            fi
+        if ! check_file_uploaded "$file" 2>/dev/null; then
+            files_to_upload_count=$((files_to_upload_count + 1))
         fi
     fi
 done
@@ -320,118 +318,84 @@ else
     log "所有文件已上传，无需上传新文件"
 fi
 
+# 初始化上传计数器
 current_upload_num=0
 
-# 遍历所有需要上传的文件
-log "开始遍历文件数组，共 ${#files_to_upload[@]} 个文件"
+# 一次性上传所有文件（包括基础包、共享包、地图包、分片文件、manifest）
+log_section "[3] 批量上传所有文件"
+log "开始上传 ${files_to_upload_count} 个文件（包括基础包、共享包、地图包、分片文件）..."
+echo ""
+
+map_count=0
+split_count=0
+skipped_count=0
+skip_count=0
+base_uploaded=false
+shared_uploaded=false
+
 for file in "${files_to_upload[@]}"; do
     if [ ! -f "$file" ]; then
         continue
     fi
     
     filename=$(basename "$file")
-    
-    # 跳过基础包和共享包（已在前面处理）
-    if [[ "$filename" == "base-${VERSION}.tar.gz" ]] || [[ "$filename" == "shared-${VERSION}.tar.gz" ]] || [[ "$filename" == "manifest-${VERSION}.json" ]]; then
-        continue
-    fi
+    file_size=${file_sizes["$file"]:-0}
+    file_size_mb=$((file_size / 1024 / 1024))
     
     # 检查是否已上传且完整
     if check_file_uploaded "$file" 2>/dev/null; then
-        file_size=${file_sizes["$file"]:-0}
-        file_size_mb=$((file_size / 1024 / 1024))
         log "✓ 已上传且完整，跳过: $filename (${file_size_mb}MB)"
-            skipped_count=$((skipped_count + 1))
-        continue
-    fi
-    
-    file_size=${file_sizes["$file"]:-0}
-    file_size_mb=$((file_size / 1024 / 1024))
-    file_size_gb=$(echo "scale=2; $file_size / 1024 / 1024 / 1024" | bc)
-    
-    # 处理分片文件
-    if [[ "$filename" == *.part* ]]; then
-        if check_file_uploaded "$file" 2>/dev/null; then
-            log "✓ 已上传且完整，跳过: $filename (${file_size_mb}MB)"
-        else
-            current_upload_num=$((current_upload_num + 1))
-            if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
-                refresh_uploaded_files  # 刷新已上传文件列表
-            fi
+        skipped_count=$((skipped_count + 1))
+        # 统计已上传的文件类型
+        if [[ "$filename" == "base-${VERSION}.tar.gz" ]]; then
+            base_uploaded=true
+        elif [[ "$filename" == "shared-${VERSION}.tar.gz" ]] || [[ "$filename" == shared-*.tar.part* ]] || [[ "$filename" == shared-*.tar.merge.sh ]] || [[ "$filename" == shared-*.tar.sha256 ]]; then
+            shared_uploaded=true
         fi
         continue
     fi
     
-    # 处理合并脚本和校验和
-    if [[ "$filename" == *.merge.sh ]] || [[ "$filename" == *.sha256 ]]; then
-        if check_file_uploaded "$file" 2>/dev/null; then
-            log "✓ 已上传且完整，跳过: $filename"
-        else
-            current_upload_num=$((current_upload_num + 1))
-            if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
-                refresh_uploaded_files  # 刷新已上传文件列表
-            fi
-        fi
+    # 检查文件大小（超过 2GB 的 tar.gz 文件应该已经被分片）
+    if [ "$file_size" -gt "$MAX_SIZE" ] && [[ "$filename" == *.tar.gz ]]; then
+        log "⚠️  跳过: $filename (${file_size_mb}MB, 超过 2GB 限制，应该使用分片文件)"
         continue
     fi
     
-    # 处理普通地图包
-    if [[ "$filename" == *-${VERSION}.tar.gz ]]; then
-        if check_file_uploaded "$file" 2>/dev/null; then
-            log "✓ 已上传且完整，跳过: $filename (${file_size_mb}MB)"
+    # 上传文件
+    current_upload_num=$((current_upload_num + 1))
+    if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
+        # 统计上传的文件类型
+        if [[ "$filename" == "base-${VERSION}.tar.gz" ]]; then
+            base_uploaded=true
+        elif [[ "$filename" == "shared-${VERSION}.tar.gz" ]] || [[ "$filename" == shared-*.tar.part* ]] || [[ "$filename" == shared-*.tar.merge.sh ]] || [[ "$filename" == shared-*.tar.sha256 ]]; then
+            shared_uploaded=true
+        elif [[ "$filename" == *-${VERSION}.tar.gz ]]; then
             map_count=$((map_count + 1))
-        elif [ "$file_size" -gt "$MAX_SIZE" ]; then
-            log "⚠️  大文件: $filename (${file_size_gb}GB, 超过 2GB 限制)"
-            map_base="${filename%.tar.gz}"
-            # 检查 releases/ 目录下是否有分片文件
-            if [ -f "${RELEASE_DIR}/${map_base}.part000" ] || [ -f "${RELEASE_DIR}/${map_base}.tar.part000" ]; then
-                log "  检测到已分割的文件，分片将在后续处理"
-                split_count=$((split_count + 1))
-            else
-                log "  提示: 运行以下命令分割文件："
-                log "    $SPLIT_SCRIPT \"$file\""
-                log "  或者使用其他方式上传（如 Google Drive, Baidu Netdisk）"
-                skip_count=$((skip_count + 1))
-            fi
-        else
-            current_upload_num=$((current_upload_num + 1))
-            if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
-                map_count=$((map_count + 1))
-                refresh_uploaded_files  # 刷新已上传文件列表
-            fi
+        elif [[ "$filename" == *.part* ]] || [[ "$filename" == *.merge.sh ]] || [[ "$filename" == *.sha256 ]]; then
+            split_count=$((split_count + 1))
         fi
+        refresh_uploaded_files  # 刷新已上传文件列表
     fi
 done
 
-log "✓ 已上传 ${map_count} 个地图包"
-if [ "$split_count" -gt 0 ]; then
-    log "✓ 已处理 ${split_count} 个大文件的分片"
-fi
-if [ "$skipped_count" -gt 0 ]; then
-    log "✓ 已跳过 ${skipped_count} 个已上传且完整的文件"
-fi
-if [ "$skip_count" -gt 0 ]; then
-    log "⚠️  跳过 ${skip_count} 个超过 2GB 的文件（未分割）"
-fi
-
-# 上传清单文件
-log_section "[4] 上传清单文件"
-manifest_file="${RELEASE_DIR}/manifest-${VERSION}.json"
-if [ -f "$manifest_file" ]; then
-    if check_file_uploaded "$manifest_file" 2>/dev/null; then
-        log "✓ 清单文件已上传且完整，跳过: manifest-${VERSION}.json"
-    else
-        current_upload_num=$((current_upload_num + 1))
-        if upload_file_with_progress "$manifest_file" "$current_upload_num" "$files_to_upload_count"; then
-            refresh_uploaded_files  # 刷新已上传文件列表
-        fi
-    fi
+echo ""
+log "✓ 上传完成统计:"
+if [ "$base_uploaded" = true ]; then
+    log "  - 基础包: ✓ 已上传"
 else
-    log "⚠️  清单文件不存在，跳过"
+    log "  - 基础包: ⚠️  未上传"
 fi
+if [ "$shared_uploaded" = true ]; then
+    log "  - 共享资源包: ✓ 已上传（包括分片文件）"
+else
+    log "  - 共享资源包: ⚠️  未上传"
+fi
+log "  - 地图包: ${map_count} 个"
+log "  - 分片文件: ${split_count} 个"
+log "  - 已跳过: ${skipped_count} 个（已上传且与本地一致）"
 
 # 最终验证上传完整性
-log_section "[5] 最终验证上传完整性"
+log_section "[4] 最终验证上传完整性"
 log "重新获取已上传文件列表..."
 refresh_uploaded_files
 
@@ -471,20 +435,20 @@ else
             if [ "$local_size" -gt "$MAX_SIZE" ]; then
                 log "  跳过（超过 2GB 限制）"
             else
-                ((current_upload_num++))
+                current_upload_num=$((current_upload_num + 1))
                 if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
-                    ((uploaded_missing++))
+                    uploaded_missing=$((uploaded_missing + 1))
                     refresh_uploaded_files  # 刷新已上传文件列表
                 fi
             fi
         elif [ "$remote_size" != "$local_size" ]; then
             log "⚠️  文件大小不匹配: $filename (本地: ${local_size}, 远程: ${remote_size})"
-            ((incomplete_count++))
+            incomplete_count=$((incomplete_count + 1))
             # 重新上传
             file_size_mb=$((local_size / 1024 / 1024))
-            ((current_upload_num++))
+            current_upload_num=$((current_upload_num + 1))
             if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
-                ((uploaded_missing++))
+                uploaded_missing=$((uploaded_missing + 1))
                 refresh_uploaded_files  # 刷新已上传文件列表
             fi
         fi
@@ -502,7 +466,7 @@ else
     fi
 fi
 
-log_section "[6] 完成"
+log_section "[5] 完成"
 echo ""
 echo "✅ 文件上传完成！"
 echo ""
@@ -515,49 +479,79 @@ echo "  - 地图包: ${map_count} 个已上传"
 if [ "$split_count" -gt 0 ]; then
     echo "  - 分割文件: ${split_count} 个大文件已分割上传"
 fi
-if [ "$skip_count" -gt 0 ]; then
+if [ "${skip_count:-0}" -gt 0 ]; then
     echo "  - 跳过: ${skip_count} 个超过 2GB 的文件（未分割）"
 fi
 echo ""
-if [ "$skip_count" -gt 0 ]; then
+if [ "${skip_count:-0}" -gt 0 ]; then
     echo "⚠️  注意: 有 ${skip_count} 个文件超过 GitHub Releases 的 2GB 限制"
     echo "   这些文件需要上传到其他存储（如 Google Drive, Baidu Netdisk）"
     echo ""
 fi
 # 检查 Release 是否为草稿状态
+log_section "[6] 检查 Release 状态"
 is_draft=$(gh release view "v${VERSION}" --repo "$REPO" --json isDraft -q '.isDraft' 2>/dev/null || echo "false")
 
 if [ "$is_draft" == "true" ]; then
+    log "Release 当前是草稿状态"
     read -p "是否发布 Release? (从草稿状态发布) [Y/n]: " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
         log "发布 Release..."
-        # 使用 GitHub API 发布 Release（某些版本的 gh CLI 不支持 release edit 命令）
-        release_id=$(gh release view "v${VERSION}" --repo "$REPO" --json id -q '.id' 2>/dev/null)
-        if [ -n "$release_id" ]; then
-            if gh api "repos/${REPO}/releases/${release_id}" -X PATCH -f draft=false 2>/dev/null; then
-                log "✓ Release 已发布！"
-            else
-                log "⚠️  发布失败，请手动发布:"
-                log "  release_id=\$(gh release view v${VERSION} --repo ${REPO} --json id -q '.id')"
-                log "  gh api repos/${REPO}/releases/\${release_id} -X PATCH -f draft=false"
-            fi
+        # 获取 Release 的 databaseId（REST API 需要数字 ID，不是 GraphQL ID）
+        database_id=$(gh api graphql -f query='query($owner: String!, $repo: String!, $tag: String!) { repository(owner: $owner, name: $repo) { release(tagName: $tag) { databaseId } } }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="v${VERSION}" 2>/dev/null | jq -r '.data.repository.release.databaseId' 2>/dev/null)
+        
+        if [ -z "$database_id" ] || [ "$database_id" == "null" ]; then
+            log "⚠️  无法获取 Release databaseId"
+            log "请检查权限或稍后手动发布"
         else
-            log "⚠️  无法获取 Release ID，请手动发布"
+            log "Release databaseId: $database_id"
+            if gh api "repos/${REPO}/releases/${database_id}" -X PATCH -f draft=false 2>/dev/null; then
+                log "✓ Release 已发布！"
+                echo ""
+                echo "🔗 Release 链接:"
+                echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
+                echo ""
+                
+                # 显示 Release 信息
+                log "Release 信息:"
+                gh release view "v${VERSION}" --repo "$REPO" --json name,isDraft,state,url,assets --jq '{
+                    name: .name,
+                    draft: .isDraft,
+                    state: .state,
+                    url: .html_url,
+                    assets: (.assets | length)
+                }' 2>/dev/null || true
+            else
+                log "⚠️  发布失败，请检查权限或稍后手动发布"
+                echo ""
+                echo "🔗 Release 链接（草稿状态）:"
+                echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
+            fi
         fi
-        echo ""
-        echo "🔗 Release 链接:"
-        echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
     else
         log "保持草稿状态"
         echo ""
-        echo "稍后可以手动发布:"
-        echo "  release_id=\$(gh release view v${VERSION} --repo ${REPO} --json id -q '.id')"
-        echo "  gh api repos/${REPO}/releases/\${release_id} -X PATCH -f draft=false"
+        echo "🔗 Release 链接（草稿状态）:"
+        echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
+        echo ""
+        log "稍后可以重新运行此脚本并选择发布，或使用以下命令发布:"
+        log "  bash scripts/release_manager/upload_to_release.sh ${VERSION}"
     fi
 else
     log "✓ Release 已经是发布状态"
     echo ""
     echo "🔗 Release 链接:"
     echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
+    echo ""
+    
+    # 显示 Release 信息
+    log "Release 信息:"
+    gh release view "v${VERSION}" --repo "$REPO" --json name,isDraft,state,url,assets --jq '{
+        name: .name,
+        draft: .isDraft,
+        state: .state,
+        url: .html_url,
+        assets: (.assets | length)
+    }' 2>/dev/null || true
 fi

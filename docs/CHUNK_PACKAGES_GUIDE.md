@@ -16,22 +16,8 @@ MATRiX现在支持模块化打包，将模拟器内容分为：
 
 ### 自动安装（推荐）
 
-**从 GitHub Releases 下载并安装：**
 ```bash
 bash scripts/release_manager/install_chunks.sh 0.0.4
-```
-
-脚本会：
-- 自动下载基础包（必需）
-- 提示是否下载共享资源包（推荐）
-- 交互式选择要下载的地图包
-- 自动处理分片文件的下载和合并（对于超过2GB的大文件）
-- **所有下载的文件保存在 `releases/` 目录**，方便后续使用
-
-**从本地 releases/ 目录安装：**
-```bash
-# 如果文件已经下载到 releases/ 目录
-bash scripts/release_manager/install_chunks_local.sh 0.0.4
 ```
 
 ### 手动安装
@@ -54,57 +40,50 @@ bash scripts/release_manager/install_chunks_local.sh 0.0.4
 4. **解压到运行目录**
    ```bash
    cd src/UeSim/Linux/jszr_mujoco_ue
-   tar -xzf ../../../../releases/base-0.0.4.tar.gz
+   tar -xzf ../../../../base-0.0.4.tar.gz
    cd Content/Paks
-   tar -xzf ../../../../releases/shared-0.0.4.tar.gz
-   tar -xzf ../../../../releases/SceneWorld-0.0.4.tar.gz
+   tar -xzf ../../../../shared-0.0.4.tar.gz
+   tar -xzf ../../../../SceneWorld-0.0.4.tar.gz
    ```
-
-> **注意：** 建议将下载的文件放在 `releases/` 目录，这样可以使用 `install_chunks_local.sh` 脚本进行后续安装。
 
 ## 📋 包说明
 
 ### 基础包 (base-0.0.4.tar.gz) - 必需
-- **大小**: ~920MB
+- **大小**: ~950MB
 - **内容**: 
   - EmptyWorld地图
   - 核心蓝图和系统文件
   - Chunk 0 (pakchunk0)
 - **必需**: ✅ 是
-- **下载位置**: `releases/base-0.0.4.tar.gz`
 
 ### 共享资源包 (shared-0.0.4.tar.gz) - 推荐
-- **大小**: ~182MB
+- **大小**: ~3.2GB
 - **内容**: 
-  - Fab/Warehouse共享资源
-  - StarterContent共享资源
+  - Fab/Carla共享资源
+  - 多个地图共享的蓝图和资源
   - Chunk 1 (pakchunk1)
 - **必需**: ⚠️ 否，但多个地图依赖，强烈建议安装
-- **下载位置**: `releases/shared-0.0.4.tar.gz`
 
 ### 地图包 - 可选
 
-| 地图包 | 大小 | Chunk ID | 说明 | 备注 |
-|--------|------|----------|------|------|
-| SceneWorld | ~277MB | 11 | 仓库场景 | |
-| Town10World | ~3.6GB | 12 | 城镇场景 | ⚠️ 大文件，已分割为多个分片 |
-| YardWorld | ~694MB | 13 | 庭院场景 | |
-| CrowdWorld | ~406MB | 14 | 人群场景 | |
-| VeniceWorld | ~327MB | 15 | 威尼斯场景 | |
-| RunningWorld | ~36MB | 16 | 跑步场景 | |
-| HouseWorld | ~327MB | 17 | 房屋场景 | |
-| IROSFlatWorld | ~177MB | 18 | IROS平地场景 | |
-| IROSSlopedWorld | ~419MB | 19 | IROS斜坡场景 | |
-| Town10Zombie | ~3.5GB | 20 | 僵尸场景 | ⚠️ 大文件，已分割为多个分片 |
-| IROSFlatWorld2025 | ~114MB | 21 | IROS 2025平地场景 | |
-| IROSSloppedWorld2025 | ~114MB | 22 | IROS 2025斜坡场景 | |
-| OfficeWorld | ~379MB | 23 | 办公室场景 | |
-| Custom | ~48MB | 24 | 自定义场景 | |
-
-> **注意：** 
-> - 所有地图包下载后保存在 `releases/` 目录
-> - 超过2GB的大文件（Town10World, Town10Zombie）会被分割为多个分片文件
-> - 安装脚本会自动处理分片文件的下载、合并和校验
+| 地图包 | 大小 | Chunk ID | 说明 |
+|--------|------|----------|------|
+| SceneWorld | ~423MB | 11 | 仓库场景 |
+| Town10World | ~1.1GB | 12 | 城镇场景（大） |
+| YardWorld | ~695MB | 13 | 庭院场景 |
+| CrowdWorld | ~60MB | 14 | 人群场景 |
+| VeniceWorld | ~328MB | 15 | 威尼斯场景 |
+| RunningWorld | ~36MB | 16 | 跑步场景 |
+| HouseWorld | ~265MB | 17 | 房屋场景 |
+| IROSFlatWorld | ~300KB | 18 | IROS平地场景 |
+| IROSSlopedWorld | ~250MB | 19 | IROS斜坡场景 |
+| Town10Zombie | ~628MB | 20 | 僵尸场景（大） |
+| IROSFlatWorld2025 | ~148KB | 21 | IROS 2025平地场景 |
+| IROSSloppedWorld2025 | ~149KB | 22 | IROS 2025斜坡场景 |
+| OfficeWorld | ~418MB | 23 | 办公室场景 |
+| CustomWorld | ~22MB | 24 | 自定义场景 |
+| 3DGSWorld | ~206MB | 25 | 3D高斯地图 |
+| MoonWorld | ~603MB | 26 | 月球环境 |
 
 ## 🔍 验证安装
 
@@ -126,82 +105,11 @@ ls -lh pakchunk*.pak
 
 ```bash
 # 已在 matrix 根目录
-./scripts/run_sim.sh 0 0  # 运行EmptyWorld（只需要基础包）
-./scripts/run_sim.sh 1 1  # 切换到SceneWorld（需要SceneWorld地图包）
+./scripts/run_sim.sh 1 0  # XGB机器人，CustomWorld地图
+./scripts/run_sim.sh 1 1  # XGB机器人，Warehouse地图（需要SceneWorld地图包）
 ```
 
-## 💾 文件管理
-
-### 下载文件位置
-
-所有通过 `install_chunks.sh` 下载的文件都保存在 `releases/` 目录：
-
-```
-releases/
-├── base-0.0.4.tar.gz              # 基础包
-├── shared-0.0.4.tar.gz            # 共享资源包
-├── SceneWorld-0.0.4.tar.gz        # 地图包
-├── Town10World-0.0.4.tar.gz       # 大文件（合并后）
-├── Town10World-0.0.4.tar.part000  # 分片文件
-├── Town10World-0.0.4.tar.part001  # 分片文件
-├── Town10World-0.0.4.tar.merge.sh # 合并脚本
-├── Town10World-0.0.4.tar.sha256   # 校验和文件
-└── manifest-0.0.4.json            # 包清单文件
-```
-
-### 后续安装
-
-如果已经下载了文件到 `releases/` 目录，可以使用本地安装脚本：
-
-```bash
-# 安装其他地图包（无需重新下载）
-bash scripts/release_manager/install_chunks_local.sh 0.0.4
-```
-
-这样可以：
-- ✅ 避免重复下载
-- ✅ 离线安装
-- ✅ 快速添加新地图
-
-## 🔧 脚本选择指南
-
-### `install_chunks.sh` vs `install_chunks_local.sh`
-
-| 特性 | install_chunks.sh | install_chunks_local.sh |
-|------|------------------|------------------------|
-| **数据源** | GitHub Releases | 本地 releases/ 目录 |
-| **网络需求** | ✅ 需要 | ❌ 不需要 |
-| **交互选择** | ✅ 支持（可选择地图） | ❌ 自动安装所有 |
-| **下载功能** | ✅ 自动下载 | ❌ 不下载 |
-| **安装功能** | ✅ 下载+安装 | ✅ 仅安装 |
-| **使用场景** | 首次安装/更新 | 离线安装/重新安装 |
-| **速度** | 较慢（需下载） | 快速（仅解压） |
-
-### 何时使用哪个脚本？
-
-**使用 `install_chunks.sh` 当：**
-- 🌐 首次安装，需要从 GitHub 下载
-- 🆕 需要获取最新版本
-- 🎯 只想下载特定的地图包
-- 📥 需要下载功能
-
-**使用 `install_chunks_local.sh` 当：**
-- 💾 文件已下载到 releases/ 目录
-- 🔌 没有网络连接（离线环境）
-- ⚡ 需要快速重新安装
-- 📦 想安装 releases/ 目录下所有可用包
-
-### 典型工作流程
-
-```bash
-# 步骤 1: 首次安装（有网络）
-bash scripts/release_manager/install_chunks.sh 0.0.4
-# → 下载到 releases/ + 安装到运行目录
-
-# 步骤 2: 后续安装（离线或重新安装）
-bash scripts/release_manager/install_chunks_local.sh 0.0.4
-# → 从 releases/ 安装到运行目录（不下载）
-```
+> **注意：** EmptyWorld 是默认地图，包含在基础包中，通过 `DefaultEngine.ini` 配置。它不通过地图 ID 运行，而是作为引擎的默认启动地图。如需运行 EmptyWorld，直接启动模拟器即可，无需指定地图 ID。
 
 ## ❓ 常见问题
 
@@ -216,18 +124,6 @@ A: 可以！你可以根据需要只下载要使用的地图包。
 
 **Q: 如何更新到新版本？**  
 A: 下载新版本的包，解压覆盖旧文件即可。建议先备份。
-
-**Q: 下载的文件保存在哪里？**  
-A: 所有下载的文件都保存在 `releases/` 目录，包括基础包、共享资源包、地图包、分片文件等。
-
-**Q: 我可以删除 releases/ 目录下的文件吗？**  
-A: 可以，但建议保留。如果删除后需要重新安装，需要重新下载。保留文件可以使用 `install_chunks_local.sh` 快速安装。
-
-**Q: 大文件（Town10World, Town10Zombie）如何下载？**  
-A: 这些文件超过2GB，会被分割为多个分片文件。`install_chunks.sh` 脚本会自动下载所有分片、合并脚本和校验和文件，然后自动合并并验证。
-
-**Q: `install_chunks.sh` 和 `install_chunks_local.sh` 有什么区别？**  
-A: `install_chunks.sh` 从 GitHub 下载并安装（需要网络），`install_chunks_local.sh` 从本地 releases/ 目录安装（无需网络）。两者都会安装到运行目录，区别在于数据源。
 
 ## 📚 更多信息
 

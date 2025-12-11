@@ -12,7 +12,9 @@ fi
 
 SCENE="scene_terrain_wh.xml" # default
 WEAPON="" # default
-if [[ "$2" == "1" ]]; then
+if [[ "$2" == "0" ]]; then
+    SCENE="scene_terrain_custom.xml"
+elif [[ "$2" == "1" ]]; then
     SCENE="scene_terrain_wh.xml"
 elif [[ "$2" == "2" ]]; then
     SCENE="scene_terrain_t10.xml"
@@ -40,9 +42,18 @@ elif [[ "$2" == "12" ]]; then
 elif [[ "$2" == "13" ]]; then
     SCENE="scene_terrain_office.xml"
 elif [[ "$2" == "14" ]]; then
-    SCENE="scene_terrain_custom.xml"
+    SCENE="3dgs.xml"
+elif [[ "$2" == "15" ]]; then
+    SCENE="scene_terrain_moon_dynamic.xml"
+    # Copy dynamic map data for moonworld
+    if [ -f "$PROJECT_ROOT/dynamicmaps/moonworld.bin" ]; then
+        cp "$PROJECT_ROOT/dynamicmaps/moonworld.bin" "$PROJECT_ROOT/src/robot_mujoco/simulate/build/DynamicMapData.bin"
+        echo "[INFO] Copied moonworld.bin to DynamicMapData.bin"
+    else
+        echo "[WARNING] moonworld.bin not found at $PROJECT_ROOT/dynamicmaps/moonworld.bin"
+    fi
 else
-    echo "[INFO] Unknown or empty scene id '$1', using default: $SCENE"
+    echo "[INFO] Unknown or empty scene id '$2', using default: $SCENE"
 fi
 
 sed -i "s/^robot_scene: .*/robot_scene: \"$SCENE\"/" "$PROJECT_ROOT/src/robot_mujoco/simulate/config.yaml"
@@ -84,8 +95,6 @@ else
     echo "[INFO] Unknown or empty robot type '$1', using default: xgb"
 fi
 
-
-# sed -i "s/^export ROBOT_TYPE=.*/export ROBOT_TYPE=\"$MCROBOTTYPE\"/" "$PROJECT_ROOT/src/robot_mc/run_mc.sh"
 sed -i "s/^robot: .*/robot: \"$ROBOTTYPE\"/" "$PROJECT_ROOT/src/robot_mujoco/simulate/config.yaml"
 
 # Update config.json (use root config/config.json if exists, otherwise use UeSim config)
@@ -105,6 +114,8 @@ if [ -f "$PROJECT_ROOT/config/config.json" ]; then
     if [ -f "$XML_FILE" ]; then
         sed -i "s/<body name=\"base_link\" pos=\"[^\"]*\"/<body name=\"base_link\" pos=\"${ROBOT_X} ${ROBOT_Y} 0.65\"/" "$XML_FILE"
         echo "[INFO] Updated robot position to (${ROBOT_X}, ${ROBOT_Y}) in ${XML_FILE}"
+    else
+        echo "[WARNING] XML file not found: $XML_FILE"
     fi
     
     # Copy scene.json if exists
@@ -114,8 +125,12 @@ if [ -f "$PROJECT_ROOT/config/config.json" ]; then
     fi
 else
     # Fallback to direct update of UeSim config.json
-    jq ".robot.robot_type = \"$ROBOTTYPE\" | .robot.weapon = \"$WEAPON\"" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json" > "$PROJECT_ROOT/tmp_config.json" && mv "$PROJECT_ROOT/tmp_config.json" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json"
-    rm -f "$PROJECT_ROOT/tmp_config.json"
+    if [ -f "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json" ]; then
+        jq ".robot.robot_type = \"$ROBOTTYPE\" | .robot.weapon = \"$WEAPON\"" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json" > "$PROJECT_ROOT/tmp_config.json" && mv "$PROJECT_ROOT/tmp_config.json" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json"
+        rm -f "$PROJECT_ROOT/tmp_config.json"
+    else
+        echo "[WARNING] config.json not found in either location"
+    fi
 fi
 
 echo "[INFO] Killing old processes if they exist..."

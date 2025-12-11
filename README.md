@@ -26,7 +26,10 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   │   └── zsibot_common*.deb
   ├── docs/                        # Documentation
   │   ├── README_CN.md
-  │   └── CHUNK_PACKAGES_GUIDE.md
+  │   ├── CHUNK_PACKAGES_GUIDE.md
+  │   ├── GIT_LFS_GUIDE.md
+  │   ├── README_1.md
+  │   └── README_2.md
   ├── scripts/                     # Build and configuration scripts
   │   ├── build.sh                    # One-click build script
   │   ├── run_sim.sh                  # Simulation launch script
@@ -39,7 +42,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   │       ├── install_chunks.sh              # Download and install from GitHub Releases
   │       ├── install_chunks_local.sh        # Install from local releases/ directory
   │       ├── package_chunks_for_release.sh  # Package chunks for release
-  │       ├── upload_to_release.sh           # Upload packages to GitHub Releases
+  │       ├── upload_to_release.sh           # Upload packages to GitHub Releases (with auto-consistency check and publish)
   │       └── split_large_file.sh            # Split large files (>2GB) for GitHub
   ├── releases/                    # Downloaded chunk packages (created after installation)
   │   ├── base-*.tar.gz               # Base package
@@ -108,35 +111,23 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
      - **Shared Resources** (Recommended): Shared resources used by multiple maps
      - **Map Packages** (Optional): Individual maps that can be downloaded on demand
 
-     **Automatic Installation (Recommended):**
+     **Quick Installation:**
      ```bash
      bash scripts/release_manager/install_chunks.sh 0.0.4
      ```
      
-     The script will:
-     - Download the base package (required)
-     - Prompt you to download shared resources (recommended)
-     - Let you select which maps to download interactively
-     - Save all downloaded files to `releases/` directory for future use
-
-     **Available Maps:**
-     - SceneWorld, Town10World, YardWorld, CrowdWorld, VeniceWorld
-     - RunningWorld, HouseWorld, IROSFlatWorld, IROSSlopedWorld
-     - Town10Zombie, IROSFlatWorld2025, IROSSloppedWorld2025
-     - OfficeWorld, Custom
-
-     > **Note:** All downloaded packages are saved in the `releases/` directory. You can use `install_chunks_local.sh` to install additional maps later without re-downloading.
+     > 📖 **For Details:** For complete information about the chunk package system, including package sizes, map list, installation verification, and FAQs, see the [Chunk Packages Guide](docs/CHUNK_PACKAGES_GUIDE.md).
 
      **Alternative: Manual Download from Cloud Storage**
      
      If you prefer to download the full package from cloud storage:
-     - **Google Drive**: [Download Link](https://drive.google.com/drive/folders/1JN9K3m6ZvmVpHY9BLk4k_Yj9vndyh8nT?usp=sharing)
+     - **Google Drive**: [Download Link](https://drive.google.com/file/d/1mxIU5sj0l6S4mHeCyCVg5Bx84nmDWg8R/view?usp=sharing)
        ```bash
        pip install gdown
        gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
        unzip <downloaded_filename>
        ```
-     - **Baidu Netdisk**: [Download Link](https://pan.baidu.com/s/1o8UEO1vUxPYmzeiiP9DYgg?pwd=hwqs)
+     - **Baidu Netdisk**: [Download Link](https://pan.baidu.com/s/15he0Yr2iqP6Ko0vN-pioOg?pwd=hgea)
      - **JFrog**:
        ```bash
        curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla" -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"
@@ -167,7 +158,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | `build_mc.sh` | Build MC control module | `./scripts/build_mc.sh` |
   | `build_mujoco_sdk.sh` | Build MuJoCo SDK | `./scripts/build_mujoco_sdk.sh` |
   | `package_chunks_for_release.sh` | Package chunks for release | `bash scripts/release_manager/package_chunks_for_release.sh <version>` |
-  | `upload_to_release.sh` | Upload packages to GitHub Releases | `bash scripts/release_manager/upload_to_release.sh <version>` |
+  | `upload_to_release.sh` | Upload packages to GitHub Releases (with auto-consistency check and publish) | `bash scripts/release_manager/upload_to_release.sh <version>` |
+  | `commit_and_push.sh` | Commit and push chunk package changes | `bash scripts/release_manager/commit_and_push.sh <version>` |
   | `split_large_file.sh` | Split large files (>2GB) for GitHub | `bash scripts/release_manager/split_large_file.sh <file_path>` |
 
   ### 🚀 Typical Workflows
@@ -259,6 +251,84 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   - `install_chunks_local.sh` only installs from `releases/` to runtime directory
 
   > **Tip:** Keep files in `releases/` directory for future use. You can delete them to save space, but you'll need to re-download if you want to reinstall.
+
+  ---
+
+  ## 🗺️ Map ID Reference
+
+  When using `run_sim.sh`, you can specify maps by ID:
+
+  | Map ID | Map Name | Description |
+  |--------|----------|-------------|
+  | 0 | CustomWorld | Custom map |
+  | 1 | Warehouse | Warehouse environment |
+  | 2 | Town10World | Town10 map |
+  | 3 | YardWorld | Yard environment |
+  | 4 | CrowdWorld | Crowd simulation |
+  | 5 | VeniceWorld | Venice map |
+  | 6 | HouseWorld | House environment |
+  | 7 | RunningWorld | Running track |
+  | 8 | Town10Zombie | Town10 with zombies |
+  | 9 | IROSFlatWorld | IROS flat terrain |
+  | 10 | IROSSlopedWorld | IROS sloped terrain |
+  | 11 | IROSFlatWorld2025 | IROS flat terrain 2025 |
+  | 12 | IROSSloppedWorld2025 | IROS sloped terrain 2025 |
+  | 13 | OfficeWorld | Office environment |
+  | 14 | 3DGSWorld | 3D Gaussian Splatting world |
+  | 15 | MoonWorld | Moon environment |
+
+  **Usage Examples:**
+  ```bash
+  ./scripts/run_sim.sh 1 1   # XGB robot, Warehouse map
+  ./scripts/run_sim.sh 4 4   # GO2 robot, CrowdWorld map
+  ./scripts/run_sim.sh 1 0   # XGB robot, CustomWorld map
+  ```
+
+  > **Note:** EmptyWorld is the default map included in the base package and configured via `DefaultEngine.ini`. It is not run via map ID, but serves as the engine's default startup map.
+
+  ---
+
+  ## 🔍 Troubleshooting
+
+  ### Common Issues
+
+  **1. "jszr_mujoco executable not found" Error**
+  
+  **Solution:**
+  ```bash
+  # Make sure you have built the MuJoCo SDK
+  ./scripts/build_mujoco_sdk.sh
+  
+  # Verify the executable exists
+  ls -lh src/robot_mujoco/simulate/build/jszr_mujoco
+  ```
+
+  **2. "Build directory does not exist" Error**
+  
+  **Solution:**
+  ```bash
+  # The build script should create the directory, but if it doesn't:
+  mkdir -p src/robot_mujoco/simulate/build
+  cd src/robot_mujoco/simulate
+  cmake -S . -B build
+  cmake --build build -j$(nproc)
+  ```
+
+  **3. Simulation Fails to Start**
+  
+  **Check:**
+  - Ensure all chunk packages are installed: `ls src/UeSim/Linux/jszr_mujoco_ue/Content/Paks/`
+  - Check log files: `cat src/robot_mujoco/simulate/build/robot_mujoco.log`
+  - Verify UE5 executable exists: `ls src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/`
+
+  **4. Missing Map Files**
+  
+  **Solution:**
+  ```bash
+  # Reinstall missing maps
+  bash scripts/release_manager/install_chunks.sh 0.0.4
+  # Select the missing maps when prompted
+  ```
 
   ---
 
@@ -372,18 +442,20 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
 ---
 
-## 📡 Sensor Data Post-processing
+  ## 📡 Sensor Data Post-processing
 
-- The depth camera outputs images as `sensor_msgs::msg::Image` with **32FC1 encoding**.
-- To obtain a grayscale depth image, use the following code snippet:
+  - The depth camera outputs images as `sensor_msgs::msg::Image` with **32FC1 encoding**.
+  - To obtain a grayscale depth image, use the following code snippet:
 
-```bash
-  void callback(const sensor_msgs::msg::Image::SharedPtr msg)
-  {
-    cv::Mat depth_image;
-    depth_image = cv::Mat(HEIGHT, WIDTH, CV_32FC1, const_cast<uchar*>(msg->data.data()));
-  }
-```
+  ```bash
+    void callback(const sensor_msgs::msg::Image::SharedPtr msg)
+    {
+      cv::Mat depth_image;
+      depth_image = cv::Mat(HEIGHT, WIDTH, CV_32FC1, const_cast<uchar*>(msg->data.data()));
+    }
+  ```
+
+  ---
 
 
 
@@ -431,30 +503,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   - [中文文档](docs/README_CN.md) - 中文使用指南
   - [Chunk Packages 使用指南](docs/CHUNK_PACKAGES_GUIDE.md) - 模块化打包部署说明
-
-  ## 📦 Chunk Packages System
-
-  MATRiX uses a modular chunk package system for flexible installation:
-
-  - **Base Package** (Required): Core simulator files and EmptyWorld map
-  - **Shared Resources** (Recommended): Shared assets used by multiple maps
-  - **Map Packages** (Optional): Individual maps that can be downloaded on demand
-
-  **Benefits:**
-  - ✅ Download only what you need, saving storage space
-  - ✅ Quick start with just the base package
-  - ✅ Expand on demand by downloading specific maps
-  - ✅ All packages cached in `releases/` directory for offline use
-
-  **Installation:**
-  ```bash
-  # Download and install from GitHub Releases
-  bash scripts/release_manager/install_chunks.sh 0.0.4
-
-  # Or install from local releases/ directory (if already downloaded)
-  bash scripts/release_manager/install_chunks_local.sh 0.0.4
-  ```
-
-  For more details, see [Chunk Packages Guide](docs/CHUNK_PACKAGES_GUIDE.md).
+  - [机器人类型与地图选择](docs/README_1.md) - 详细的机器人类型和地图说明（含图片）
+  - [自定义场景指南](docs/README_2.md) - 通过 JSON 文件创建自定义场景
+  - [Git LFS 使用指南](docs/GIT_LFS_GUIDE.md) - 大文件管理指南（面向开发者）
 
   ---

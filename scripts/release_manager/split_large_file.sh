@@ -7,19 +7,11 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# 加载公共函数库
+source "${SCRIPT_DIR}/common.sh"
 cd "$PROJECT_ROOT" || exit 1
 
 MAX_CHUNK_SIZE=2000000000  # 1.86GB (留一些余量，避免正好2GB)
-
-log() {
-    echo "[$(date '+%H:%M:%S')] $*"
-}
-
-error_exit() {
-    log "❌ ERROR: $*"
-    exit 1
-}
 
 split_file() {
     local input_file="$1"
