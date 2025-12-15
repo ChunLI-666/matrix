@@ -17,38 +17,38 @@ MATRiX现在支持模块化打包，将模拟器内容分为：
 ### 自动安装（推荐）
 
 ```bash
-bash scripts/release_manager/install_chunks.sh 0.0.4
+bash scripts/release_manager/install_chunks.sh 0.1.0
 ```
 
 ### 手动安装
 
 1. **下载基础包**（必需）
    ```bash
-   wget https://github.com/zsibot/matrix/releases/download/v0.0.4/base-0.0.4.tar.gz
+   wget https://github.com/zsibot/matrix/releases/download/v0.1.0/base-0.1.0.tar.gz
    ```
 
 2. **下载共享资源包**（推荐）
    ```bash
-   wget https://github.com/zsibot/matrix/releases/download/v0.0.4/shared-0.0.4.tar.gz
+   wget https://github.com/zsibot/matrix/releases/download/v0.1.0/shared-0.1.0.tar.gz
    ```
 
 3. **下载地图包**（按需）
    ```bash
-   wget https://github.com/zsibot/matrix/releases/download/v0.0.4/SceneWorld-0.0.4.tar.gz
+   wget https://github.com/zsibot/matrix/releases/download/v0.1.0/SceneWorld-0.1.0.tar.gz
    ```
 
 4. **解压到运行目录**
    ```bash
    cd src/UeSim/Linux/jszr_mujoco_ue
-   tar -xzf ../../../../base-0.0.4.tar.gz
+   tar -xzf ../../../../base-0.1.0.tar.gz
    cd Content/Paks
-   tar -xzf ../../../../shared-0.0.4.tar.gz
-   tar -xzf ../../../../SceneWorld-0.0.4.tar.gz
+   tar -xzf ../../../../shared-0.1.0.tar.gz
+   tar -xzf ../../../../SceneWorld-0.1.0.tar.gz
    ```
 
 ## 📋 包说明
 
-### 基础包 (base-0.0.4.tar.gz) - 必需
+### 基础包 (base-0.1.0.tar.gz) - 必需
 - **大小**: ~950MB
 - **内容**: 
   - EmptyWorld地图
@@ -56,7 +56,7 @@ bash scripts/release_manager/install_chunks.sh 0.0.4
   - Chunk 0 (pakchunk0)
 - **必需**: ✅ 是
 
-### 共享资源包 (shared-0.0.4.tar.gz) - 推荐
+### 共享资源包 (shared-0.1.0.tar.gz) - 推荐
 - **大小**: ~3.2GB
 - **内容**: 
   - Fab/Carla共享资源

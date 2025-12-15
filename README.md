@@ -136,7 +136,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
      **Quick Installation:**
      ```bash
-     bash scripts/release_manager/install_chunks.sh 0.0.4
+     bash scripts/release_manager/install_chunks.sh 0.1.0
      ```
      
      > 📖 **For Details:** For complete information about the chunk package system, including package sizes, map list, installation verification, and FAQs, see the [Chunk Packages Guide](docs/CHUNK_PACKAGES_GUIDE.md).
@@ -204,7 +204,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   ./scripts/build.sh
 
   # 5. Install chunk packages (download from GitHub)
-  bash scripts/release_manager/install_chunks.sh 0.0.4
+  bash scripts/release_manager/install_chunks.sh 0.1.0
   # → Selectively choose maps to download
   # → Files are saved to releases/ directory
   # → Packages are automatically installed to src/UeSim/Linux/jszr_mujoco_ue/
@@ -217,12 +217,12 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ```bash
   # 1. On a machine with internet, download packages
-  bash scripts/release_manager/install_chunks.sh 0.0.4
+  bash scripts/release_manager/install_chunks.sh 0.1.0
 
   # 2. Copy the releases/ directory to offline machine
 
   # 3. On offline machine, install from local files
-  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  bash scripts/release_manager/install_chunks_local.sh 0.1.0
   # → Installs all packages from releases/ directory
   ```
 
@@ -230,11 +230,11 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ```bash
   # Option 1: Download and install new maps
-  bash scripts/release_manager/install_chunks.sh 0.0.4
+  bash scripts/release_manager/install_chunks.sh 0.1.0
   # → Select additional maps to download
 
   # Option 2: If files already in releases/, just install
-  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  bash scripts/release_manager/install_chunks_local.sh 0.1.0
   # → Installs all available maps from releases/
   ```
 
@@ -242,7 +242,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ```bash
   # Quick reinstall from local releases/ directory
-  bash scripts/release_manager/install_chunks_local.sh 0.0.4
+  bash scripts/release_manager/install_chunks_local.sh 0.1.0
   # → No download needed, fast installation
   ```
 
@@ -265,8 +265,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   ```
   matrix/
   ├── releases/                    # Downloaded packages (created after install_chunks.sh)
-  │   ├── base-0.0.4.tar.gz       # Base package
-  │   ├── shared-0.0.4.tar.gz     # Shared resources
+  │   ├── base-0.1.0.tar.gz       # Base package
+  │   ├── shared-0.1.0.tar.gz     # Shared resources
   │   └── *.tar.gz                # Map packages
   │
   └── src/UeSim/Linux/jszr_mujoco_ue/  # Runtime directory (where packages are installed)
@@ -364,7 +364,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   git lfs pull
   
   # Then reinstall missing maps
-  bash scripts/release_manager/install_chunks.sh 0.0.4
+  bash scripts/release_manager/install_chunks.sh 0.1.0
   # Select the missing maps when prompted
   ```
 

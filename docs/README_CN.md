@@ -137,7 +137,7 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
 
    **快速安装：**
    ```bash
-   bash scripts/release_manager/install_chunks.sh 0.0.4
+   bash scripts/release_manager/install_chunks.sh 0.1.0
    ```
    
    > 📖 **详细说明：** 有关分块包系统的完整说明、包大小、地图列表、验证安装和常见问题，请参阅 [Chunk Packages 使用指南](CHUNK_PACKAGES_GUIDE.md)。
@@ -205,7 +205,7 @@ git lfs pull
 ./scripts/build.sh
 
 # 5. 安装分块包（从 GitHub 下载）
-bash scripts/release_manager/install_chunks.sh 0.0.4
+bash scripts/release_manager/install_chunks.sh 0.1.0
 # → 选择性选择要下载的地图
 # → 文件保存到 releases/ 目录
 # → 包自动安装到 src/UeSim/Linux/jszr_mujoco_ue/
@@ -218,12 +218,12 @@ bash scripts/release_manager/install_chunks.sh 0.0.4
 
 ```bash
 # 1. 在有网络的机器上，下载包
-bash scripts/release_manager/install_chunks.sh 0.0.4
+bash scripts/release_manager/install_chunks.sh 0.1.0
 
 # 2. 将 releases/ 目录复制到离线机器
 
 # 3. 在离线机器上，从本地文件安装
-bash scripts/release_manager/install_chunks_local.sh 0.0.4
+bash scripts/release_manager/install_chunks_local.sh 0.1.0
 # → 从 releases/ 目录安装所有包
 ```
 
@@ -231,11 +231,11 @@ bash scripts/release_manager/install_chunks_local.sh 0.0.4
 
 ```bash
 # 选项 1: 下载并安装新地图
-bash scripts/release_manager/install_chunks.sh 0.0.4
+bash scripts/release_manager/install_chunks.sh 0.1.0
 # → 选择要下载的额外地图
 
 # 选项 2: 如果文件已在 releases/ 中，直接安装
-bash scripts/release_manager/install_chunks_local.sh 0.0.4
+bash scripts/release_manager/install_chunks_local.sh 0.1.0
 # → 从 releases/ 安装所有可用地图
 ```
 
@@ -243,7 +243,7 @@ bash scripts/release_manager/install_chunks_local.sh 0.0.4
 
 ```bash
 # 从本地 releases/ 目录快速重新安装
-bash scripts/release_manager/install_chunks_local.sh 0.0.4
+bash scripts/release_manager/install_chunks_local.sh 0.1.0
 # → 无需下载，快速安装
 ```
 
@@ -266,8 +266,8 @@ bash scripts/release_manager/install_chunks_local.sh 0.0.4
 ```
 matrix/
 ├── releases/                    # 下载的包（运行 install_chunks.sh 后创建）
-│   ├── base-0.0.4.tar.gz       # 基础包
-│   ├── shared-0.0.4.tar.gz     # 共享资源
+│   ├── base-0.1.0.tar.gz       # 基础包
+│   ├── shared-0.1.0.tar.gz     # 共享资源
 │   └── *.tar.gz                # 地图包
 │
 └── src/UeSim/Linux/jszr_mujoco_ue/  # 运行时目录（包安装位置）
@@ -365,7 +365,7 @@ cmake --build build -j$(nproc)
 git lfs pull
 
 # 然后重新安装缺失的地图
-bash scripts/release_manager/install_chunks.sh 0.0.4
+bash scripts/release_manager/install_chunks.sh 0.1.0
 # 在提示时选择缺失的地图
 ```
 
