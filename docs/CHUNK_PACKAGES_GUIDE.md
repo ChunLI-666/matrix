@@ -24,17 +24,17 @@ bash scripts/release_manager/install_chunks.sh 0.0.4
 
 1. **下载基础包**（必需）
    ```bash
-   wget https://github.com/Alphabaijinde/matrix/releases/download/v0.0.4/base-0.0.4.tar.gz
+   wget https://github.com/zsibot/matrix/releases/download/v0.0.4/base-0.0.4.tar.gz
    ```
 
 2. **下载共享资源包**（推荐）
    ```bash
-   wget https://github.com/Alphabaijinde/matrix/releases/download/v0.0.4/shared-0.0.4.tar.gz
+   wget https://github.com/zsibot/matrix/releases/download/v0.0.4/shared-0.0.4.tar.gz
    ```
 
 3. **下载地图包**（按需）
    ```bash
-   wget https://github.com/Alphabaijinde/matrix/releases/download/v0.0.4/SceneWorld-0.0.4.tar.gz
+   wget https://github.com/zsibot/matrix/releases/download/v0.0.4/SceneWorld-0.0.4.tar.gz
    ```
 
 4. **解压到运行目录**

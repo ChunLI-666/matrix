@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 VERSION="${1:-0.0.4}"
-GITHUB_REPO="Alphabaijinde/matrix"
+GITHUB_REPO="zsibot/matrix"
 GITHUB_RELEASE_URL="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}"
 TARGET_DIR="${PROJECT_ROOT}/src/UeSim/Linux/jszr_mujoco_ue"
 PAK_DIR="${TARGET_DIR}/Content/Paks"
@@ -496,8 +496,8 @@ if [ "$manifest_valid" = true ] && [ -f "$MANIFEST_FILE" ] && command -v jq &> /
         done < <(jq -r '.packages.maps[].name' "$MANIFEST_FILE" 2>/dev/null)
         
         if [ ${#map_names[@]} -eq 0 ]; then
-            log "⚠️  无法解析 manifest，使用默认地图列表"
-            map_names=("SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "RunningWorld" "HouseWorld" "IROSFlatWorld" "IROSSlopedWorld" "Town10Zombie" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "Custom")
+            log "⚠️  无法解析 manifest，使用默认地图列表（按地图ID顺序）"
+            map_names=("CustomWorld" "SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "HouseWorld" "RunningWorld" "Town10Zombie" "IROSFlatWorld" "IROSSlopedWorld" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "3DGSWorld" "MoonWorld")
         map_index=1
             for map_name in "${map_names[@]}"; do
                 printf "  %2d. %s\n" "$map_index" "$map_name"
@@ -505,9 +505,9 @@ if [ "$manifest_valid" = true ] && [ -f "$MANIFEST_FILE" ] && command -v jq &> /
             done
         fi
     else
-        # 如果没有 manifest 或 jq，使用默认列表
+        # 如果没有 manifest 或 jq，使用默认列表（按地图ID顺序）
         echo "可用地图包:"
-        map_names=("SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "RunningWorld" "HouseWorld" "IROSFlatWorld" "IROSSlopedWorld" "Town10Zombie" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "Custom")
+        map_names=("CustomWorld" "SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "HouseWorld" "RunningWorld" "Town10Zombie" "IROSFlatWorld" "IROSSlopedWorld" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "3DGSWorld" "MoonWorld")
         map_index=1
         for map_name in "${map_names[@]}"; do
             printf "  %2d. %s\n" "$map_index" "$map_name"
@@ -517,7 +517,7 @@ if [ "$manifest_valid" = true ] && [ -f "$MANIFEST_FILE" ] && command -v jq &> /
     
     echo ""
 echo "输入要下载的地图（支持数字索引或地图名称，用空格分隔）:"
-echo "  例如: 1 3 10 8  或  SceneWorld Town10World  或  1 SceneWorld 3"
+echo "  例如: 0 1 2  或  CustomWorld SceneWorld Town10World  或  0 CustomWorld 14"
 echo "  输入 'all' 下载全部，直接回车跳过"
     read -r maps_input
     

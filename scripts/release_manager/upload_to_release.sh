@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/common.sh"
 cd "$PROJECT_ROOT"
 
 VERSION="${1:-0.0.4}"
-REPO="Alphabaijinde/matrix"
+REPO="zsibot/matrix"
 RELEASE_DIR="releases"
 MAX_SIZE=2147483648  # 2GB in bytes (GitHub Releases limit)
 

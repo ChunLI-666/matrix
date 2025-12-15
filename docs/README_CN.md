@@ -93,19 +93,42 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
    ```
    > **注意：** 将 `<version>` 替换为实际解压出的 LCM 目录名。
 
-2. **克隆 MATRiX 仓库**
+2. **安装 Git LFS**
+   
+   MATRiX 使用 Git LFS 来管理大文件（二进制文件、3D 模型、UE5 资源）。请在克隆仓库前安装 Git LFS：
    ```bash
-   git clone https://github.com/Alphabaijinde/matrix.git
+   sudo apt-get install git-lfs
+   git lfs install
+   ```
+   > **注意：** 如果未安装 Git LFS，克隆的文件可能显示为小的指针文件而不是实际内容。
+
+3. **克隆 MATRiX 仓库**
+   ```bash
+   git clone https://github.com/zsibot/matrix.git
    cd matrix
    ```
+   
+   **验证 LFS 文件是否已下载：**
+   ```bash
+   # 检查 LFS 文件是否正确下载
+   git lfs ls-files | head -10
+   # 如果文件显示为指针（小文件），拉取 LFS 内容：
+   git lfs pull
+   ```
+   > **注意：** 如果下载速度慢，可以先跳过 LFS 克隆，稍后再拉取：
+   > ```bash
+   > GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/zsibot/matrix.git
+   > cd matrix
+   > git lfs pull
+   > ```
 
-3. **安装依赖**
+4. **安装依赖**
    ```bash
    ./scripts/build.sh
    ```
    *(该脚本将自动安装所有所需依赖)*
 
-4. **安装分块包（模块化安装）**
+5. **安装分块包（模块化安装）**
 
    MATRiX 使用模块化分块包系统，允许您只下载所需内容：
    - **基础包**（必需）：核心文件和 EmptyWorld 地图
@@ -167,20 +190,27 @@ MATRiX 提供了多种脚本来帮助您构建、安装和运行仿真器。以�
 #### **首次设置（新用户）**
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/Alphabaijinde/matrix.git
+# 1. 安装 Git LFS
+sudo apt-get install git-lfs
+git lfs install
+
+# 2. 克隆仓库
+git clone https://github.com/zsibot/matrix.git
 cd matrix
 
-# 2. 安装依赖并构建
+# 3. 验证并拉取 LFS 文件（如需要）
+git lfs pull
+
+# 4. 安装依赖并构建
 ./scripts/build.sh
 
-# 3. 安装分块包（从 GitHub 下载）
+# 5. 安装分块包（从 GitHub 下载）
 bash scripts/release_manager/install_chunks.sh 0.0.4
 # → 选择性选择要下载的地图
 # → 文件保存到 releases/ 目录
 # → 包自动安装到 src/UeSim/Linux/jszr_mujoco_ue/
 
-# 4. 运行仿真
+# 6. 运行仿真
 ./scripts/run_sim.sh 1 0  # XGB 机器人，CustomWorld 地图
 ```
 
@@ -292,14 +322,20 @@ matrix/
 
 ### 常见问题
 
-**1. "jszr_mujoco executable not found" 错误**
+**1. "jszr_mujoco executable not found" 或 "invalid ELF header" 错误**
 
 **解决方案：**
 ```bash
-# 确保已构建 MuJoCo SDK
+# 检查 Git LFS 文件是否正确下载
+git lfs ls-files | grep jszr_mujoco
+
+# 如果文件显示为指针（小文件），拉取 LFS 内容：
+git lfs pull
+
+# 然后重新构建（如需要）
 ./scripts/build_mujoco_sdk.sh
 
-# 验证可执行文件是否存在
+# 验证可执行文件是否存在且大小正确
 ls -lh src/robot_mujoco/simulate/build/jszr_mujoco
 ```
 
@@ -321,13 +357,33 @@ cmake --build build -j$(nproc)
 - 检查日志文件：`cat src/robot_mujoco/simulate/build/robot_mujoco.log`
 - 验证 UE5 可执行文件是否存在：`ls src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/`
 
-**4. 缺少地图文件**
+**4. 缺少地图文件或 LFS 文件未下载**
 
 **解决方案：**
 ```bash
-# 重新安装缺失的地图
+# 首先，确保 Git LFS 文件已下载
+git lfs pull
+
+# 然后重新安装缺失的地图
 bash scripts/release_manager/install_chunks.sh 0.0.4
 # 在提示时选择缺失的地图
+```
+
+**5. Git LFS 文件显示为小的指针文件**
+
+**症状：** 文件如 `.so`、`.uasset`、`.pak` 显示为小的文本文件（指针文件）。
+
+**解决方案：**
+```bash
+# 如果未安装，先安装 Git LFS
+sudo apt-get install git-lfs
+git lfs install
+
+# 拉取 LFS 内容
+git lfs pull
+
+# 验证文件是否正确下载
+git lfs ls-files
 ```
 
 ---

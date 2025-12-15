@@ -92,19 +92,42 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
      ```
      > **Note:** Replace `<version>` with the actual extracted LCM directory name.
 
-  2. **Clone MATRiX Repository**
+  2. **Install Git LFS**
+     
+     MATRiX uses Git LFS to manage large files (binaries, 3D models, UE5 assets). Install Git LFS before cloning:
      ```bash
-     git clone https://github.com/Alphabaijinde/matrix.git
+     sudo apt-get install git-lfs
+     git lfs install
+     ```
+     > **Note:** If Git LFS is not installed, cloned files may appear as small pointer files instead of actual content.
+
+  3. **Clone MATRiX Repository**
+     ```bash
+     git clone https://github.com/zsibot/matrix.git
      cd matrix
      ```
+     
+     **Verify LFS files are downloaded:**
+     ```bash
+     # Check if LFS files are properly downloaded
+     git lfs ls-files | head -10
+     # If files show as pointers (small size), pull LFS content:
+     git lfs pull
+     ```
+     > **Note:** If download is slow, you can clone with LFS skip first, then pull later:
+     > ```bash
+     > GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/zsibot/matrix.git
+     > cd matrix
+     > git lfs pull
+     > ```
 
-  3. **Install Dependencies**
+  4. **Install Dependencies**
      ```bash
      ./scripts/build.sh
      ```
      *(This script will automatically install all required dependencies.)*
 
-  4. **Install Chunk Packages (Modular Installation)**
+  5. **Install Chunk Packages (Modular Installation)**
 
      MATRiX uses a modular chunk package system that allows you to download only what you need:
      - **Base Package** (Required): Core files and EmptyWorld map
@@ -166,20 +189,27 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   #### **First-Time Setup (New User)**
 
   ```bash
-  # 1. Clone the repository
-  git clone https://github.com/Alphabaijinde/matrix.git
-  cd matrix
+  # 1. Install Git LFS
+  sudo apt-get install git-lfs
+  git lfs install
 
-  # 2. Install dependencies and build
+  # 2. Clone the repository
+  git clone https://github.com/zsibot/matrix.git
+  cd matrix
+  
+  # 3. Verify and pull LFS files (if needed)
+  git lfs pull
+
+  # 4. Install dependencies and build
   ./scripts/build.sh
 
-  # 3. Install chunk packages (download from GitHub)
+  # 5. Install chunk packages (download from GitHub)
   bash scripts/release_manager/install_chunks.sh 0.0.4
   # → Selectively choose maps to download
   # → Files are saved to releases/ directory
   # → Packages are automatically installed to src/UeSim/Linux/jszr_mujoco_ue/
 
-  # 4. Run simulation
+  # 6. Run simulation
   ./scripts/run_sim.sh 0 0  # EmptyWorld with default robot
   ```
 
@@ -291,14 +321,20 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ### Common Issues
 
-  **1. "jszr_mujoco executable not found" Error**
+  **1. "jszr_mujoco executable not found" or "invalid ELF header" Error**
   
   **Solution:**
   ```bash
-  # Make sure you have built the MuJoCo SDK
+  # Check if Git LFS files are properly downloaded
+  git lfs ls-files | grep jszr_mujoco
+  
+  # If files show as pointers (small size), pull LFS content:
+  git lfs pull
+  
+  # Then rebuild if needed
   ./scripts/build_mujoco_sdk.sh
   
-  # Verify the executable exists
+  # Verify the executable exists and has correct size
   ls -lh src/robot_mujoco/simulate/build/jszr_mujoco
   ```
 
@@ -320,13 +356,33 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   - Check log files: `cat src/robot_mujoco/simulate/build/robot_mujoco.log`
   - Verify UE5 executable exists: `ls src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/`
 
-  **4. Missing Map Files**
+  **4. Missing Map Files or LFS Files Not Downloaded**
   
   **Solution:**
   ```bash
-  # Reinstall missing maps
+  # First, ensure Git LFS files are downloaded
+  git lfs pull
+  
+  # Then reinstall missing maps
   bash scripts/release_manager/install_chunks.sh 0.0.4
   # Select the missing maps when prompted
+  ```
+
+  **5. Git LFS Files Show as Small Pointer Files**
+  
+  **Symptoms:** Files like `.so`, `.uasset`, `.pak` appear as small text files (pointer files).
+  
+  **Solution:**
+  ```bash
+  # Install Git LFS if not installed
+  sudo apt-get install git-lfs
+  git lfs install
+  
+  # Pull LFS content
+  git lfs pull
+  
+  # Verify files are downloaded correctly
+  git lfs ls-files
   ```
 
   ---
