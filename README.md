@@ -27,7 +27,6 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   ├── docs/                        # Documentation
   │   ├── README_CN.md
   │   ├── CHUNK_PACKAGES_GUIDE.md
-  │   ├── GIT_LFS_GUIDE.md
   │   ├── README_1.md
   │   └── README_2.md
   ├── scripts/                     # Build and configuration scripts
@@ -45,9 +44,10 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   │       ├── upload_to_release.sh           # Upload packages to GitHub Releases (with auto-consistency check and publish)
   │       └── split_large_file.sh            # Split large files (>2GB) for GitHub
   ├── releases/                    # Downloaded chunk packages (created after installation)
-  │   ├── base-*.tar.gz               # Base package
-  │   ├── shared-*.tar.gz             # Shared resources
-  │   ├── *-*.tar.gz                  # Map packages
+  │   ├── assets-*.tar.gz             # Assets package (required) - Runtime binaries, libraries, ONNX models, 3D models
+  │   ├── base-*.tar.gz               # Base package (required) - Core files and EmptyWorld map
+  │   ├── shared-*.tar.gz             # Shared resources (recommended) - Shared resources used by multiple maps
+  │   ├── *-*.tar.gz                  # Map packages (optional) - Individual maps
   │   └── manifest-*.json             # Package manifest
   ├── src/
   │   ├── robot_mc/
@@ -60,15 +60,16 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ## ⚙️ Environment Dependencies
 
-  - **Operating System:** Ubuntu 22.04  
-  - **Recommended GPU:** NVIDIA RTX 4060 or above  
-  - **Unreal Engine:** Integrated (no separate installation required)  
-  - **Build Environment:**  
-    - GCC/G++ ≥ C++11  
-    - CMake ≥ 3.16  
-  - **MuJoCo:** 3.3.0 open-source version (integrated)  
-  - **Remote Controller:** Required (Recommended: *Logitech Wireless Gamepad F710*)  
-  - **Python Dependency:** `gdown`  
+  - **Operating System:** Ubuntu 22.04
+  - **Recommended GPU:** NVIDIA RTX 4060 or above
+  - **Unreal Engine:** Integrated (no separate installation required)
+  - **Build Environment:**
+    - GCC/G++ ≥ C++11
+    - CMake ≥ 3.16
+  - **MuJoCo:** 3.3.0 open-source version (integrated)
+  - **Remote Controller:** Required (Recommended: *Logitech Wireless Gamepad F710*)
+  - **Python Dependency:** `gdown`
+  - **ROS Dependency:** `ROS_humble`
 
   ---
 
@@ -92,70 +93,61 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
      ```
      > **Note:** Replace `<version>` with the actual extracted LCM directory name.
 
-  2. **Install Git LFS**
-     
-     MATRiX uses Git LFS to manage large files (binaries, 3D models, UE5 assets). Install Git LFS before cloning:
-     ```bash
-     sudo apt-get install git-lfs
-     git lfs install
-     ```
-     > **Note:** If Git LFS is not installed, cloned files may appear as small pointer files instead of actual content.
-
-  3. **Clone MATRiX Repository**
+  2. **Clone MATRiX Repository**
      ```bash
      git clone https://github.com/zsibot/matrix.git
      cd matrix
      ```
-     
-     **Verify LFS files are downloaded:**
-     ```bash
-     # Check if LFS files are properly downloaded
-     git lfs ls-files | head -10
-     # If files show as pointers (small size), pull LFS content:
-     git lfs pull
-     ```
-     > **Note:** If download is slow, you can clone with LFS skip first, then pull later:
-     > ```bash
-     > GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/zsibot/matrix.git
-     > cd matrix
-     > git lfs pull
-     > ```
+     > **Note:** Large files (binaries, 3D models, demo_gif, etc.) are distributed via GitHub Releases as assets packages, not Git LFS.
 
-  4. **Install Dependencies**
+  3. **Install Dependencies**
      ```bash
      ./scripts/build.sh
      ```
      *(This script will automatically install all required dependencies.)*
 
-  5. **Install Chunk Packages (Modular Installation)**
+  4. **Install Chunk Packages (Modular Installation)**
 
      MATRiX uses a modular chunk package system that allows you to download only what you need:
+     - **Assets Package** (Required): Runtime binaries, shared libraries, ONNX models, 3D models, and other essential files
      - **Base Package** (Required): Core files and EmptyWorld map
      - **Shared Resources** (Recommended): Shared resources used by multiple maps
      - **Map Packages** (Optional): Individual maps that can be downloaded on demand
 
      **Quick Installation:**
      ```bash
-     bash scripts/release_manager/install_chunks.sh 0.1.0
+     bash scripts/release_manager/install_chunks.sh 0.1.1
      ```
-     
+
      > 📖 **For Details:** For complete information about the chunk package system, including package sizes, map list, installation verification, and FAQs, see the [Chunk Packages Guide](docs/CHUNK_PACKAGES_GUIDE.md).
 
      **Alternative: Manual Download from Cloud Storage**
-     
+
      If you prefer to download the full package from cloud storage:
-     - **Google Drive**: [Download Link](https://drive.google.com/file/d/1mxIU5sj0l6S4mHeCyCVg5Bx84nmDWg8R/view?usp=sharing)
+     - **Google Drive**: [Download Link](https://drive.google.com/file/d/1e_WjFg_MJgF4X-tqR9KyjC7h1rQiMQqN/view?usp=sharing)
        ```bash
        pip install gdown
-       gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
+       gdown https://drive.google.com/file/d/1e_WjFg_MJgF4X-tqR9KyjC7h1rQiMQqN/view?usp=sharing
        unzip <downloaded_filename>
+       # Extract the downloaded files to the releases/ directory
+       mkdir -p releases
+       mv <extracted_files>/* releases/
        ```
-     - **Baidu Netdisk**: [Download Link](https://pan.baidu.com/s/15he0Yr2iqP6Ko0vN-pioOg?pwd=hgea)
-     - **JFrog**:
+     - **Baidu Netdisk**: [Download Link](https://pan.baidu.com/s/1o-7lICRBvshj--zq3OBTNA?pwd=nwjy)
        ```bash
-       curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla" -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"
-       unzip matrix.zip
+       # After downloading from Baidu Netdisk, extract files to the releases/ directory
+       mkdir -p releases
+       mv <downloaded_files>/* releases/
        ```
+     
+     > **Note:** After downloading from cloud storage:
+     > 1. Extract/unzip the downloaded archive
+     > 2. Place all package files (base-*.tar.gz, shared-*.tar.gz, assets-*.tar.gz, map-*.tar.gz, manifest-*.json) in the `releases/` directory
+     > 3. Use `install_chunks_local.sh` to install them:
+     > ```bash
+     > bash scripts/release_manager/install_chunks_local.sh 0.1.1
+     > ```
+
 
   ---
 
@@ -189,60 +181,55 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   #### **First-Time Setup (New User)**
 
   ```bash
-  # 1. Install Git LFS
-  sudo apt-get install git-lfs
-  git lfs install
-
-  # 2. Clone the repository
+  # 1. Clone the repository
   git clone https://github.com/zsibot/matrix.git
   cd matrix
-  
-  # 3. Verify and pull LFS files (if needed)
-  git lfs pull
 
-  # 4. Install dependencies and build
+  # 2. Install dependencies and build
   ./scripts/build.sh
 
-  # 5. Install chunk packages (download from GitHub)
-  bash scripts/release_manager/install_chunks.sh 0.1.0
+  # 3. Install chunk packages (download from GitHub Releases)
+  bash scripts/release_manager/install_chunks.sh 0.1.1
+  # → Automatically downloads and installs assets package (required) - binaries, libraries, ONNX models, 3D models
+  # → Automatically downloads and installs base package (required)
   # → Selectively choose maps to download
   # → Files are saved to releases/ directory
-  # → Packages are automatically installed to src/UeSim/Linux/jszr_mujoco_ue/
+  # → Packages are automatically installed to correct locations
 
-  # 6. Run simulation
-  ./scripts/run_sim.sh 0 0  # EmptyWorld with default robot
+  # 4. Run simulation
+  ./scripts/run_sim.sh 1 0  # EmptyWorld with default robot
   ```
 
   #### **Offline Installation (No Internet)**
 
   ```bash
   # 1. On a machine with internet, download packages
-  bash scripts/release_manager/install_chunks.sh 0.1.0
+  bash scripts/release_manager/install_chunks.sh 0.1.1
 
   # 2. Copy the releases/ directory to offline machine
 
   # 3. On offline machine, install from local files
-  bash scripts/release_manager/install_chunks_local.sh 0.1.0
-  # → Installs all packages from releases/ directory
+  bash scripts/release_manager/install_chunks_local.sh 0.1.1
+  # → Installs assets package (required) and all other packages from releases/ directory
   ```
 
   #### **Adding More Maps Later**
 
   ```bash
   # Option 1: Download and install new maps
-  bash scripts/release_manager/install_chunks.sh 0.1.0
+  bash scripts/release_manager/install_chunks.sh 0.1.1
   # → Select additional maps to download
 
   # Option 2: If files already in releases/, just install
-  bash scripts/release_manager/install_chunks_local.sh 0.1.0
-  # → Installs all available maps from releases/
+  bash scripts/release_manager/install_chunks_local.sh 0.1.1
+  # → Installs assets package (if needed) and all available maps from releases/
   ```
 
   #### **Reinstalling Packages**
 
   ```bash
   # Quick reinstall from local releases/ directory
-  bash scripts/release_manager/install_chunks_local.sh 0.1.0
+  bash scripts/release_manager/install_chunks_local.sh 0.1.1
   # → No download needed, fast installation
   ```
 
@@ -265,9 +252,10 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   ```
   matrix/
   ├── releases/                    # Downloaded packages (created after install_chunks.sh)
-  │   ├── base-0.1.0.tar.gz       # Base package
-  │   ├── shared-0.1.0.tar.gz     # Shared resources
-  │   └── *.tar.gz                # Map packages
+  │   ├── assets-0.1.1.tar.gz     # Assets package (required)
+  │   ├── base-0.1.1.tar.gz       # Base package (required)
+  │   ├── shared-0.1.1.tar.gz     # Shared resources (recommended)
+  │   └── *.tar.gz                # Map packages (optional)
   │
   └── src/UeSim/Linux/jszr_mujoco_ue/  # Runtime directory (where packages are installed)
       └── Content/Paks/            # Installed chunk files (.pak, .ucas, .utoc)
@@ -321,25 +309,22 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ### Common Issues
 
-  **1. "jszr_mujoco executable not found" or "invalid ELF header" Error**
-  
+  **1. "mujoco executable not found" or "invalid ELF header" Error**
+
   **Solution:**
   ```bash
-  # Check if Git LFS files are properly downloaded
-  git lfs ls-files | grep jszr_mujoco
-  
-  # If files show as pointers (small size), pull LFS content:
-  git lfs pull
-  
+  # Ensure assets package is installed (contains binaries and libraries)
+  bash scripts/release_manager/install_chunks.sh 0.1.1
+
   # Then rebuild if needed
   ./scripts/build_mujoco_sdk.sh
-  
+
   # Verify the executable exists and has correct size
-  ls -lh src/robot_mujoco/simulate/build/jszr_mujoco
+  ls -lh src/robot_mujoco/simulate/build/zsibot_mujoco
   ```
 
   **2. "Build directory does not exist" Error**
-  
+
   **Solution:**
   ```bash
   # The build script should create the directory, but if it doesn't:
@@ -350,39 +335,31 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   ```
 
   **3. Simulation Fails to Start**
-  
+
   **Check:**
   - Ensure all chunk packages are installed: `ls src/UeSim/Linux/jszr_mujoco_ue/Content/Paks/`
   - Check log files: `cat src/robot_mujoco/simulate/build/robot_mujoco.log`
   - Verify UE5 executable exists: `ls src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/`
 
-  **4. Missing Map Files or LFS Files Not Downloaded**
-  
+  **4. Missing Map Files or Resource Files**
+
   **Solution:**
   ```bash
-  # First, ensure Git LFS files are downloaded
-  git lfs pull
-  
-  # Then reinstall missing maps
-  bash scripts/release_manager/install_chunks.sh 0.1.0
+  # Reinstall chunk packages (includes assets package with binaries and libraries)
+  bash scripts/release_manager/install_chunks.sh 0.1.1
   # Select the missing maps when prompted
+  # Assets package will be automatically downloaded and installed
   ```
 
-  **5. Git LFS Files Show as Small Pointer Files**
-  
-  **Symptoms:** Files like `.so`, `.uasset`, `.pak` appear as small text files (pointer files).
-  
+  **5. Missing Binaries or Libraries**
+
+  **Symptoms:** Files like `sim_launcher`, `.so` files are missing or too small.
+
   **Solution:**
   ```bash
-  # Install Git LFS if not installed
-  sudo apt-get install git-lfs
-  git lfs install
-  
-  # Pull LFS content
-  git lfs pull
-  
-  # Verify files are downloaded correctly
-  git lfs ls-files
+  # Install assets package from GitHub Releases
+  bash scripts/release_manager/install_chunks.sh 0.1.1
+  # Assets package contains all runtime binaries and libraries
   ```
 
   ---
@@ -398,6 +375,8 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   </div>
 
+  > **Note:** [Map Descriptions](docs/README_1.md).
+
   > **Note:** The above screenshots showcase high-fidelity UE5 rendering for robotics and reinforcement learning experiments.
 
   ---
@@ -410,24 +389,29 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
 
   ## 🐕 Simulation Setup Guide
 
-  1. **Select Robot Type**  
+1. **Run the launcher**
+  ```bash
+      cd matrix
+      ./sim_launcher
+  ```
+  2. **Select Robot Type**  
     Choose the type of quadruped robot for the simulation.
 
-  2. **Select Environment**  
+  3. **Select Environment**  
     Pick the desired simulation environment or map.
 
-  3. **Choose Control Device**  
+  4. **Choose Control Device**  
     Select your preferred control device:  
     - **Gamepad Control**  
     - **Keyboard Control**
 
-  4. **Enable Headless Mode (Optional)**  
+  5. **Enable Headless Mode (Optional)**  
     Toggle the **Headless Mode** option for running the simulation without a graphical interface.
 
-  5. **Launch Simulation**  
+  6. **Launch Simulation**  
     Click the **Launch Simulation** button to start the simulation.
 
-  During simulation, if the UE window is active, you can press **ALT + TAB** to switch out of it.  
+  During simulation, if the UE window is active, you can press **ALT + TAB** to switch out of it.
   Then, use the control-mode toggle button on the launcher to switch between gamepad and keyboard control at any time.
   ## 🎮 Remote Controller Instructions (Gamepad Control Guide)
 
@@ -440,7 +424,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | Jump in Place                       | Hold **RB** + **X**                     |
   | Somersault                          | Hold **RB** + **B**                     |
 
-  
+
   ## ⌨️ Remote Controller Instructions (Keyboard Control Guide)
 
   | Action                              | Controller Input                        |
@@ -449,19 +433,26 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   | Sit                                 | Space                                   |
   | Move Forward / Back / Left / Right  | W / S / A / D                           |
   | Rotate Left / Right                 | Q / E                                   |
+  | Start                               | Enter                                   |
 
-  Press the **V** key to toggle between free camera and robot view.  
+  Press the **V** key to toggle between free camera and robot view.
+
   Hold the **left mouse button** to temporarily switch to free camera mode.
 
   ---
 
   ## 🔧 Configuration Guide
 
+  ### Custom scene setup
+  - Write your custom scene in a json file following the existing format in `matrix/scene/`, details in [Tutorial Doc](docs/README_2.md).
+  - Place your custom scene file in the `matrix/scene/scene.json` file.
+  - Select the custom map from the launcher to load it in the simulation.
+
   ### Adjust Sensor Configuration
 
   Edit:
   ```bash
-  vim src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json
+  vim matrix/config/config.json
   ```
 
   Example snippet:
@@ -492,7 +483,7 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   }
 ```
 
-- Adjust **pose** and **number of sensors** as needed  
+- Adjust **pose** and **number of sensors** as needed
 - Remove unused sensors to improve **UE FPS performance**
 
 ---
@@ -524,29 +515,32 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
     ```bash
     rviz2
     ```
-  3. **Load the configuration**:  
+  3. **Load the configuration**:
     Open `rviz/matrix.rviz` in RViz for a pre-configured view.
 
   <div align="center">
     <img src="./demo_gif/rviz2.png" alt="RViz Visualization Example" width="1280" height="720"/>
   </div>
-  
+
   > **Tip:** Ensure your ROS environment is properly sourced and relevant topics are being published.
 
   ## 📋 TODO List
 
-  - [x] IROS competition map
-  - [ ] Support for third-party quadruped robot models
+  - [x] IROS competition map(4 maps)
+  - [x] Support for third-party quadruped robot models
+  - [x] Support for custom scene based on json file
+  - [x] Add 3DGS reconstruction Map
+  - [x] Add Moon map based on dynamic ground
   - [ ] Add multi-robot simulation capabilities
 
-  
+
   ---
   ## 🙏 Acknowledgements
 
   This project builds upon the incredible work of the following open-source projects:
 
-  - [MuJoCo-Unreal-Engine-Plugin](https://github.com/oneclicklabs/MuJoCo-Unreal-Engine-Plugin)  
-  - [MuJoCo](https://github.com/google-deepmind/mujoco)  
+  - [MuJoCo-Unreal-Engine-Plugin](https://github.com/oneclicklabs/MuJoCo-Unreal-Engine-Plugin)
+  - [MuJoCo](https://github.com/google-deepmind/mujoco)
   - [Unreal Engine](https://github.com/EpicGames/UnrealEngine)
   - [CARLA](https://carla.org/)
 
@@ -560,6 +554,5 @@ MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal E
   - [Chunk Packages 使用指南](docs/CHUNK_PACKAGES_GUIDE.md) - 模块化打包部署说明
   - [机器人类型与地图选择](docs/README_1.md) - 详细的机器人类型和地图说明（含图片）
   - [自定义场景指南](docs/README_2.md) - 通过 JSON 文件创建自定义场景
-  - [Git LFS 使用指南](docs/GIT_LFS_GUIDE.md) - 大文件管理指南（面向开发者）
 
   ---

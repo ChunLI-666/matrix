@@ -92,6 +92,136 @@ verify_installation() {
     fi
 }
 
+# 从 UeSim 目录拷贝模型到 robot_mujoco 目录
+# 用法: copy_models_from_uesim_to_robot_mujoco
+copy_models_from_uesim_to_robot_mujoco() {
+    # 临时禁用set -e，避免错误导致脚本退出
+    set +e
+    
+    # 确保PROJECT_ROOT已设置
+    if [ -z "${PROJECT_ROOT:-}" ]; then
+        log "⚠️  PROJECT_ROOT 未设置，无法拷贝模型"
+        set -e
+        return 0
+    fi
+    
+    local uesim_model_dir="${PROJECT_ROOT}/src/UeSim/Linux/zsibot_mujoco_ue/Content/model"
+    local robot_mujoco_dir="${PROJECT_ROOT}/src/robot_mujoco/zsibot_robots"
+    
+    if [ ! -d "$uesim_model_dir" ]; then
+        log "⚠️  UeSim 模型目录不存在: $uesim_model_dir，跳过模型拷贝"
+        log "  PROJECT_ROOT: ${PROJECT_ROOT:-未设置}"
+        set -e
+        return 0
+    fi
+    
+    log "从 UeSim 目录拷贝模型到 robot_mujoco 目录..."
+    mkdir -p "$robot_mujoco_dir" || true
+    
+    local copied_count=0
+    local skipped_count=0
+    
+    # 遍历 UeSim 模型目录下的所有机器人目录
+    if [ -d "$uesim_model_dir" ]; then
+        # 使用数组存储机器人目录，避免子shell问题
+        local robot_names=()
+        
+        # 先收集所有机器人目录名
+        # 临时禁用nullglob，确保glob扩展正常工作
+        local old_nullglob=$(shopt -p nullglob 2>/dev/null || echo "")
+        shopt -u nullglob 2>/dev/null || true
+        
+        for robot_dir in "$uesim_model_dir"/*; do
+            # 检查是否是字面量（glob扩展失败的情况）
+            if [ "$robot_dir" = "$uesim_model_dir/*" ]; then
+                # glob扩展失败，使用find代替
+                break
+            fi
+            if [ -d "$robot_dir" ]; then
+                robot_name=$(basename "$robot_dir")
+                # 跳过非机器人目录
+                if [ "$robot_name" != "config" ] && [ "$robot_name" != "SceneLoder" ]; then
+                    robot_names+=("$robot_name")
+                fi
+            fi
+        done
+        
+        # 如果数组为空，使用find获取目录列表
+        if [ ${#robot_names[@]} -eq 0 ]; then
+            while IFS= read -r -d '' robot_dir; do
+                robot_name=$(basename "$robot_dir")
+                if [ "$robot_name" != "config" ] && [ "$robot_name" != "SceneLoder" ]; then
+                    robot_names+=("$robot_name")
+                fi
+            done < <(find "$uesim_model_dir" -maxdepth 1 -type d ! -path "$uesim_model_dir" -print0 2>/dev/null)
+        fi
+        
+        # 恢复nullglob设置
+        if [ -n "$old_nullglob" ]; then
+            eval "$old_nullglob" 2>/dev/null || true
+        fi
+        
+        if [ ${#robot_names[@]} -eq 0 ]; then
+            log "⚠️  未找到机器人目录"
+            set -e
+            return 0
+        fi
+        
+        # 遍历每个机器人目录，拷贝整个目录
+        for robot_name in "${robot_names[@]}"; do
+            robot_dir="${uesim_model_dir}/${robot_name}"
+            target_robot_dir="${robot_mujoco_dir}/${robot_name}"
+            
+            if [ ! -d "$robot_dir" ]; then
+                continue
+            fi
+            
+            # 创建目标机器人目录
+            mkdir -p "$target_robot_dir"
+            
+            local robot_copied=0
+            local robot_skipped=0
+            
+            # 拷贝整个目录的所有文件（递归）
+            while IFS= read -r -d '' source_file; do
+                if [ -f "$source_file" ]; then
+                    # 获取相对于源机器人目录的路径
+                    rel_path="${source_file#$robot_dir/}"
+                    target_file="${target_robot_dir}/${rel_path}"
+                    target_file_dir=$(dirname "$target_file")
+                    
+                    # 创建目标目录
+                    mkdir -p "$target_file_dir"
+                    
+                    # 拷贝文件（如果目标文件不存在或源文件更新）
+                    if [ ! -f "$target_file" ] || [ "$source_file" -nt "$target_file" ]; then
+                        if cp -f "$source_file" "$target_file" 2>/dev/null; then
+                            ((copied_count++))
+                            ((robot_copied++))
+                        fi
+                    else
+                        ((skipped_count++))
+                        ((robot_skipped++))
+                    fi
+                fi
+            done < <(find "$robot_dir" -type f -print0 2>/dev/null)
+            
+            if [ $robot_copied -gt 0 ] || [ $robot_skipped -gt 0 ]; then
+                log "  ${robot_name}: 拷贝 ${robot_copied} 个文件，跳过 ${robot_skipped} 个文件"
+            fi
+        done
+    fi
+    
+    # 恢复set -e
+    set -e
+    
+    if [ $copied_count -gt 0 ] || [ $skipped_count -gt 0 ]; then
+        log "✓ 模型拷贝完成: 总计拷贝 ${copied_count} 个文件，跳过 ${skipped_count} 个文件（已存在）"
+    else
+        log "⚠️  未找到需要拷贝的模型文件"
+    fi
+}
+
 # Chunk ID 到地图名的映射
 # 用法: get_map_name_by_chunk_id <chunk_id>
 get_map_name_by_chunk_id() {

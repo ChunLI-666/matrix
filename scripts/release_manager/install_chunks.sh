@@ -11,10 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 加载公共函数库
 source "${SCRIPT_DIR}/common.sh"
 
-VERSION="${1:-0.0.4}"
+VERSION="${1:-0.1.1}"
 GITHUB_REPO="zsibot/matrix"
 GITHUB_RELEASE_URL="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}"
-TARGET_DIR="${PROJECT_ROOT}/src/UeSim/Linux/jszr_mujoco_ue"
+TARGET_DIR="${PROJECT_ROOT}/src/UeSim/Linux/zsibot_mujoco_ue"
 PAK_DIR="${TARGET_DIR}/Content/Paks"
 
 # 检查并安装下载工具（优先多线程工具）
@@ -583,7 +583,69 @@ echo ""
 # 第二步：自动下载和安装所有选中的包
 # ============================================================================
 
-log_section "[2] 下载并安装基础包 (必需)"
+log_section "[2] 下载并安装资源文件包 (必需)"
+{
+    ASSETS_FILE="assets-${VERSION}.tar.gz"
+    ASSETS_URL="${GITHUB_RELEASE_URL}/${ASSETS_FILE}"
+    
+    # 从 manifest 读取资源包的大小和 SHA256
+    ASSETS_SIZE=""
+    ASSETS_SHA256=""
+    ASSETS_REQUIRED=false
+    if [ -f "$MANIFEST_FILE" ] && command -v jq &> /dev/null; then
+        ASSETS_SIZE=$(jq -r '.packages.assets.size // empty' "$MANIFEST_FILE" 2>/dev/null || echo "")
+        ASSETS_SHA256=$(jq -r '.packages.assets.sha256 // empty' "$MANIFEST_FILE" 2>/dev/null || echo "")
+        ASSETS_REQUIRED=$(jq -r '.packages.assets.required // false' "$MANIFEST_FILE" 2>/dev/null || echo "false")
+    fi
+    
+    # 检查资源文件是否已安装（检查一些关键文件是否存在）
+    ASSETS_INSTALLED=false
+    if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ] && [ -f "${PROJECT_ROOT}/src/UeSim/Linux/zsibot_mujoco_ue/Binaries/Linux/zsibot_mujoco_ue-Linux-Shipping" ]; then
+        # 检查文件大小（资源文件应该较大，不是指针文件）
+        launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
+        if [ "$launcher_size" -gt 1000000 ]; then  # 大于 1MB，应该是实际文件
+            ASSETS_INSTALLED=true
+        fi
+    fi
+    
+    if [ "$ASSETS_INSTALLED" = true ]; then
+        log "✓ 资源文件已安装，跳过"
+    elif [ -f "${DOWNLOAD_DIR}/${ASSETS_FILE}" ]; then
+        # 验证已下载文件的完整性
+        if verify_file_integrity "${DOWNLOAD_DIR}/${ASSETS_FILE}" "$ASSETS_SIZE" "$ASSETS_SHA256"; then
+            log "✓ 资源文件包已下载且完整，跳过下载，直接解压..."
+            if extract_tar "${DOWNLOAD_DIR}/${ASSETS_FILE}" "${PROJECT_ROOT}"; then
+                log "✓ 资源文件包安装完成"
+            else
+                error_exit "资源文件包解压失败"
+            fi
+        else
+            log "⚠️  已下载的资源文件包完整性验证失败，重新下载..."
+            rm -f "${DOWNLOAD_DIR}/${ASSETS_FILE}"
+            # 继续下载流程
+        fi
+    fi
+    
+    # 如果需要下载
+    if [ "$ASSETS_INSTALLED" = false ] && [ ! -f "${DOWNLOAD_DIR}/${ASSETS_FILE}" ]; then
+        if [ "$ASSETS_REQUIRED" = "true" ] || [ -n "$ASSETS_SHA256" ]; then
+            log "开始下载资源文件包..."
+            if download_and_extract_stream "$ASSETS_URL" "${PROJECT_ROOT}" "资源文件包" "$ASSETS_SIZE" "$ASSETS_SHA256"; then
+                log "✓ 资源文件包安装完成"
+            else
+                if [ "$ASSETS_REQUIRED" = "true" ]; then
+                    error_exit "资源文件包下载失败（必需），请检查网络连接和版本号"
+                else
+                    log "⚠️  资源文件包下载失败，跳过（可选）"
+                fi
+            fi
+        else
+            log "⚠️  manifest 中未找到资源包信息，跳过"
+        fi
+    fi
+}
+
+log_section "[3] 下载并安装基础包 (必需)"
 {
     BASE_FILE="base-${VERSION}.tar.gz"
     BASE_URL="${GITHUB_RELEASE_URL}/${BASE_FILE}"
@@ -606,6 +668,10 @@ log_section "[2] 下载并安装基础包 (必需)"
             if extract_tar "${DOWNLOAD_DIR}/${BASE_FILE}" "$TARGET_DIR"; then
                 # 使用公共函数移动 chunk 文件
                 move_chunk_files_to_paks "${TARGET_DIR}/Content/Paks" "$PAK_DIR"
+                
+                # 从 UeSim 目录拷贝模型到 robot_mujoco 目录
+                copy_models_from_uesim_to_robot_mujoco
+                
                 log "✓ 基础包安装完成"
             else
                 error_exit "基础包解压失败"
@@ -621,10 +687,13 @@ log_section "[2] 下载并安装基础包 (必需)"
     if [ ! -f "${PAK_DIR}/pakchunk0-Linux.pak" ] && [ ! -f "${DOWNLOAD_DIR}/${BASE_FILE}" ]; then
         log "开始下载基础包..."
         if download_and_extract_stream "$BASE_URL" "$TARGET_DIR" "基础包" "$BASE_SIZE" "$BASE_SHA256"; then
-            log "✓ 基础包安装完成"
-            
             # 使用公共函数移动 chunk 文件
             move_chunk_files_to_paks "${TARGET_DIR}/Content/Paks" "$PAK_DIR"
+            
+            # 从 UeSim 目录拷贝模型到 robot_mujoco 目录
+            copy_models_from_uesim_to_robot_mujoco
+            
+            log "✓ 基础包安装完成"
         else
             error_exit "基础包下载失败，请检查网络连接和版本号"
         fi
@@ -633,7 +702,7 @@ log_section "[2] 下载并安装基础包 (必需)"
 
 # 下载并安装共享资源包
 if [ "$DOWNLOAD_SHARED" = true ]; then
-    log_section "[3] 下载并安装共享资源包"
+    log_section "[4] 下载并安装共享资源包"
     {
         SHARED_FILE="shared-${VERSION}.tar.gz"
         SHARED_URL="${GITHUB_RELEASE_URL}/${SHARED_FILE}"
@@ -686,7 +755,7 @@ fi
 
 # 下载并安装地图包
 if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
-    log_section "[4] 下载并安装地图包"
+    log_section "[5] 下载并安装地图包"
     
     # 函数：下载并安装单个地图包（支持分片和流式处理）
     download_and_install_map() {
@@ -807,18 +876,31 @@ if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
         done
     fi
 
-log_section "[5] 验证安装"
+log_section "[6] 验证安装"
 {
     # 使用公共函数验证安装
     verify_installation "$PAK_DIR"
+    
+    # 验证资源文件是否已安装
+    if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
+        launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
+        if [ "$launcher_size" -gt 1000000 ]; then
+            log "✓ 资源文件验证通过: sim_launcher (${launcher_size} 字节)"
+        else
+            log "⚠️  资源文件可能未正确安装: sim_launcher 文件过小 (${launcher_size} 字节)"
+        fi
+    fi
 }
 
-log_section "[6] 完成"
+log_section "[7] 完成"
 {
     echo ""
     echo "✅ Chunk包安装完成！"
     echo ""
     echo "已安装的包:"
+    if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
+        echo "  - 资源文件包"
+    fi
     echo "  - 基础包 (Chunk 0)"
     if [ "$DOWNLOAD_SHARED" = true ] && [ -f "${PAK_DIR}/pakchunk1-Linux.pak" ]; then
         echo "  - 共享资源包 (Chunk 1)"

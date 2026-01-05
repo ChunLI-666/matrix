@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 CHUNK_SOURCE="/home/user/work/workspace/jszr_mujoco_ue2/dist/chunks"
-VERSION="${1:-0.0.4}"
+VERSION="${1:-0.1.1}"
 RELEASE_DIR="${PROJECT_ROOT}/releases"
 TEMP_DIR="${PROJECT_ROOT}/releases/.temp_${VERSION}"
 
@@ -26,6 +26,30 @@ log_section "[1] 准备发布目录结构"
     mkdir -p "${RELEASE_DIR}"
     log "✓ 创建临时打包目录: ${TEMP_DIR}"
     log "✓ 发布目录: ${RELEASE_DIR} (压缩包将直接放在这里)"
+}
+
+log_section "[1.5] 打包资源文件（如果尚未打包）"
+{
+    ASSETS_PACKAGE_NAME="assets-${VERSION}.tar.gz"
+    ASSETS_PACKAGE_PATH="${RELEASE_DIR}/${ASSETS_PACKAGE_NAME}"
+    
+    if [ ! -f "$ASSETS_PACKAGE_PATH" ]; then
+        log "资源文件包不存在，开始打包..."
+        if bash "${SCRIPT_DIR}/package_lfs_files.sh" "$VERSION"; then
+            # 如果生成的是 lfs-files，重命名为 assets
+            if [ -f "${RELEASE_DIR}/lfs-files-${VERSION}.tar.gz" ]; then
+                mv "${RELEASE_DIR}/lfs-files-${VERSION}.tar.gz" "$ASSETS_PACKAGE_PATH"
+                if [ -f "${RELEASE_DIR}/.lfs_sha256_${VERSION}.txt" ]; then
+                    mv "${RELEASE_DIR}/.lfs_sha256_${VERSION}.txt" "${RELEASE_DIR}/.assets_sha256_${VERSION}.txt"
+                fi
+            fi
+            log "✓ 资源文件包已创建"
+        else
+            log "⚠️  资源文件打包失败，跳过资源包"
+        fi
+    else
+        log "✓ 资源文件包已存在: ${ASSETS_PACKAGE_NAME}"
+    fi
 }
 
 log_section "[2] 复制基础包 (Chunk 0)"
@@ -191,6 +215,15 @@ log_section "[6] 生成清单文件"
     SHARED_SIZE=$(stat -f%z "shared-${VERSION}.tar.gz" 2>/dev/null || stat -c%s "shared-${VERSION}.tar.gz" 2>/dev/null || echo 0)
     SHARED_IS_SPLIT=$(check_is_split "shared-${VERSION}")
     
+    # 获取资源包的信息（如果存在）
+    ASSETS_PACKAGE_NAME="assets-${VERSION}.tar.gz"
+    ASSETS_SHA256=""
+    ASSETS_SIZE=0
+    if [ -f "$ASSETS_PACKAGE_NAME" ]; then
+        ASSETS_SHA256=$(get_sha256 "$ASSETS_PACKAGE_NAME")
+        ASSETS_SIZE=$(stat -f%z "$ASSETS_PACKAGE_NAME" 2>/dev/null || stat -c%s "$ASSETS_PACKAGE_NAME" 2>/dev/null || echo 0)
+    fi
+    
     cat > "manifest-${VERSION}.json" << EOF
 {
   "version": "${VERSION}",
@@ -227,6 +260,22 @@ EOF
     
     cat >> "manifest-${VERSION}.json" << EOF
     },
+EOF
+
+    # 添加资源包信息（如果存在）
+    if [ -n "$ASSETS_SHA256" ] && [ "$ASSETS_SIZE" -gt 0 ]; then
+        cat >> "manifest-${VERSION}.json" << EOF
+    "assets": {
+      "file": "${ASSETS_PACKAGE_NAME}",
+      "required": true,
+      "description": "资源文件包 - 包含运行时必需的文件（可执行文件、共享库、3D模型等）",
+      "size": ${ASSETS_SIZE},
+      "sha256": "${ASSETS_SHA256}"
+    },
+EOF
+    fi
+    
+    cat >> "manifest-${VERSION}.json" << EOF
     "maps": [
 EOF
 
@@ -234,8 +283,8 @@ EOF
     cd "${RELEASE_DIR}"
     first=true
     for map_tar in *-${VERSION}.tar.gz; do
-        # 跳过 base 和 shared
-        if [[ "$map_tar" == base-* ]] || [[ "$map_tar" == shared-* ]]; then
+        # 跳过 base、shared 和 assets
+        if [[ "$map_tar" == base-* ]] || [[ "$map_tar" == shared-* ]] || [[ "$map_tar" == assets-* ]]; then
             continue
         fi
         if [ -f "$map_tar" ]; then
@@ -312,8 +361,11 @@ log_section "[8] 总结"
     if [ -f "shared-${VERSION}.tar.gz" ]; then
         echo "  - 共享资源包: shared-${VERSION}.tar.gz ($(du -sh "shared-${VERSION}.tar.gz" | cut -f1))"
     fi
-    map_count=$(ls -1 *-${VERSION}.tar.gz 2>/dev/null | grep -v "^base-" | grep -v "^shared-" | wc -l)
+    map_count=$(ls -1 *-${VERSION}.tar.gz 2>/dev/null | grep -v "^base-" | grep -v "^shared-" | grep -v "^assets-" | wc -l)
     echo "  - 地图包数量: ${map_count}"
+    if [ -f "assets-${VERSION}.tar.gz" ]; then
+        echo "  - 资源文件包: assets-${VERSION}.tar.gz ($(du -sh "assets-${VERSION}.tar.gz" | cut -f1))"
+    fi
     echo ""
     echo "📁 发布目录: ${RELEASE_DIR}"
     echo ""

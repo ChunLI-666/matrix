@@ -1,8 +1,8 @@
 <h1>
-  <a href="#"><img alt="Forest" src="demo_gif/Forest.png" width="100%"/></a>
+  <a href="#"><img alt="Forest" src="../demo_gif/Forest.png" width="100%"/></a>
 </h1>
 
-<div align="right">
+<div align="center">
 
 [![English](https://img.shields.io/badge/Language-English-blue)](../README.md)
 [![中文](https://img.shields.io/badge/语言-中文-red)](README_CN.md)
@@ -27,7 +27,6 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
 ├── docs/                        # 文档
 │   ├── README_CN.md
 │   ├── CHUNK_PACKAGES_GUIDE.md
-│   ├── GIT_LFS_GUIDE.md
 │   ├── README_1.md
 │   └── README_2.md
 ├── scripts/                     # 构建与配置脚本
@@ -45,9 +44,10 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
 │       ├── upload_to_release.sh           # 上传包到 GitHub Releases（包含自动一致性检查和发布功能）
 │       └── split_large_file.sh            # 分割大文件（>2GB）用于 GitHub
 ├── releases/                    # 下载的分块包（安装后创建）
-│   ├── base-*.tar.gz               # 基础包
-│   ├── shared-*.tar.gz             # 共享资源
-│   ├── *-*.tar.gz                  # 地图包
+│   ├── assets-*.tar.gz             # 资源文件包（必需）- 运行时二进制文件、库、ONNX 模型、3D 模型
+│   ├── base-*.tar.gz               # 基础包（必需）- 核心文件和 EmptyWorld 地图
+│   ├── shared-*.tar.gz             # 共享资源（推荐）- 多个地图共享的资源
+│   ├── *-*.tar.gz                  # 地图包（可选）- 各个地图
 │   └── manifest-*.json             # 包清单
 ├── src/
 │   ├── robot_mc/
@@ -75,7 +75,7 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
 
 ## 🚀 安装与构建
 
-1. **LCM 安装**
+  1. **LCM 安装**
    ```bash
    sudo apt update
    sudo apt install -y cmake-qt-gui gcc g++ libglib2.0-dev python3-pip
@@ -93,51 +93,30 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
    ```
    > **注意：** 将 `<version>` 替换为实际解压出的 LCM 目录名。
 
-2. **安装 Git LFS**
-   
-   MATRiX 使用 Git LFS 来管理大文件（二进制文件、3D 模型、UE5 资源）。请在克隆仓库前安装 Git LFS：
-   ```bash
-   sudo apt-get install git-lfs
-   git lfs install
-   ```
-   > **注意：** 如果未安装 Git LFS，克隆的文件可能显示为小的指针文件而不是实际内容。
-
-3. **克隆 MATRiX 仓库**
+  2. **克隆 MATRiX 仓库**
    ```bash
    git clone https://github.com/zsibot/matrix.git
    cd matrix
    ```
-   
-   **验证 LFS 文件是否已下载：**
-   ```bash
-   # 检查 LFS 文件是否正确下载
-   git lfs ls-files | head -10
-   # 如果文件显示为指针（小文件），拉取 LFS 内容：
-   git lfs pull
-   ```
-   > **注意：** 如果下载速度慢，可以先跳过 LFS 克隆，稍后再拉取：
-   > ```bash
-   > GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/zsibot/matrix.git
-   > cd matrix
-   > git lfs pull
-   > ```
+   > **注意：** 大文件（二进制文件、3D 模型、demo_gif 等）通过 GitHub Releases 的 assets 包分发，不使用 Git LFS。
 
-4. **安装依赖**
+  3. **安装依赖**
    ```bash
    ./scripts/build.sh
    ```
    *(该脚本将自动安装所有所需依赖)*
 
-5. **安装分块包（模块化安装）**
+  4. **安装分块包（模块化安装）**
 
    MATRiX 使用模块化分块包系统，允许您只下载所需内容：
+   - **资源文件包**（必需）：运行时二进制文件、共享库、ONNX 模型、3D 模型等必需文件
    - **基础包**（必需）：核心文件和 EmptyWorld 地图
    - **共享资源**（推荐）：多个地图共享的资源
    - **地图包**（可选）：可按需下载的各个地图
 
    **快速安装：**
    ```bash
-   bash scripts/release_manager/install_chunks.sh 0.1.0
+   bash scripts/release_manager/install_chunks.sh 0.1.1
    ```
    
    > 📖 **详细说明：** 有关分块包系统的完整说明、包大小、地图列表、验证安装和常见问题，请参阅 [Chunk Packages 使用指南](CHUNK_PACKAGES_GUIDE.md)。
@@ -145,18 +124,29 @@ MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高�
    **替代方案：从云存储手动下载**
    
    如果您希望从云存储下载完整包：
-   - **Google Drive**: [下载链接](https://drive.google.com/file/d/1mxIU5sj0l6S4mHeCyCVg5Bx84nmDWg8R/view?usp=sharing)
+   - **Google Drive**: [下载链接](https://drive.google.com/file/d/1e_WjFg_MJgF4X-tqR9KyjC7h1rQiMQqN/view?usp=sharing)
      ```bash
      pip install gdown
-     gdown https://drive.google.com/uc?id=1WMtHqtJEggjgTk0rOcwO6m99diUlzq_J
-     unzip <downloaded_filename>
+     gdown https://drive.google.com/file/d/1e_WjFg_MJgF4X-tqR9KyjC7h1rQiMQqN/view?usp=sharing
+     unzip <下载的文件名>
+     # 将解压后的文件放到 releases/ 目录下
+     mkdir -p releases
+     mv <解压后的文件>/* releases/
      ```
-   - **百度网盘**: [下载链接](https://pan.baidu.com/s/15he0Yr2iqP6Ko0vN-pioOg?pwd=hgea)
-   - **JFrog**:
+   - **百度网盘**: [下载链接](https://pan.baidu.com/s/1o-7lICRBvshj--zq3OBTNA?pwd=nwjy)
      ```bash
-     curl -H "Authorization: Bearer cmVmdGtuOjAxOjE3ODQ2MDY4OTQ6eFJvZVA5akpiMmRzTFVwWXQ3YWRIbTI3TEla" -o "matrix.zip" -# "http://192.168.50.40:8082/artifactory/jszrsim/UeSim/matrix.zip"
-     unzip matrix.zip
+     # 从百度网盘下载后，将文件解压到 releases/ 目录下
+     mkdir -p releases
+     mv <下载的文件>/* releases/
      ```
+   
+   > **注意：** 从云存储下载后：
+   > 1. 解压下载的压缩包
+   > 2. 将所有包文件（base-*.tar.gz, shared-*.tar.gz, assets-*.tar.gz, map-*.tar.gz, manifest-*.json）放在 `releases/` 目录下
+   > 3. 使用 `install_chunks_local.sh` 进行安装：
+   > ```bash
+   > bash scripts/release_manager/install_chunks_local.sh 0.1.1
+   > ```
 
 ---
 
@@ -190,27 +180,22 @@ MATRiX 提供了多种脚本来帮助您构建、安装和运行仿真器。以�
 #### **首次设置（新用户）**
 
 ```bash
-# 1. 安装 Git LFS
-sudo apt-get install git-lfs
-git lfs install
-
-# 2. 克隆仓库
+# 1. 克隆仓库
 git clone https://github.com/zsibot/matrix.git
 cd matrix
 
-# 3. 验证并拉取 LFS 文件（如需要）
-git lfs pull
-
-# 4. 安装依赖并构建
+# 2. 安装依赖并构建
 ./scripts/build.sh
 
-# 5. 安装分块包（从 GitHub 下载）
-bash scripts/release_manager/install_chunks.sh 0.1.0
+# 3. 安装分块包（从 GitHub Releases 下载）
+bash scripts/release_manager/install_chunks.sh 0.1.1
+# → 自动下载并安装资源文件包（必需）- 二进制文件、库、ONNX 模型、3D 模型
+# → 自动下载并安装基础包（必需）
 # → 选择性选择要下载的地图
 # → 文件保存到 releases/ 目录
-# → 包自动安装到 src/UeSim/Linux/jszr_mujoco_ue/
+# → 包自动安装到正确位置
 
-# 6. 运行仿真
+# 4. 运行仿真
 ./scripts/run_sim.sh 1 0  # XGB 机器人，CustomWorld 地图
 ```
 
@@ -218,32 +203,32 @@ bash scripts/release_manager/install_chunks.sh 0.1.0
 
 ```bash
 # 1. 在有网络的机器上，下载包
-bash scripts/release_manager/install_chunks.sh 0.1.0
+bash scripts/release_manager/install_chunks.sh 0.1.1
 
 # 2. 将 releases/ 目录复制到离线机器
 
 # 3. 在离线机器上，从本地文件安装
-bash scripts/release_manager/install_chunks_local.sh 0.1.0
-# → 从 releases/ 目录安装所有包
+bash scripts/release_manager/install_chunks_local.sh 0.1.1
+# → 安装资源文件包（必需）和 releases/ 目录中的所有其他包
 ```
 
 #### **稍后添加更多地图**
 
 ```bash
 # 选项 1: 下载并安装新地图
-bash scripts/release_manager/install_chunks.sh 0.1.0
+bash scripts/release_manager/install_chunks.sh 0.1.1
 # → 选择要下载的额外地图
 
 # 选项 2: 如果文件已在 releases/ 中，直接安装
-bash scripts/release_manager/install_chunks_local.sh 0.1.0
-# → 从 releases/ 安装所有可用地图
+bash scripts/release_manager/install_chunks_local.sh 0.1.1
+# → 安装资源文件包（如需要）和 releases/ 中的所有可用地图
 ```
 
 #### **重新安装包**
 
 ```bash
 # 从本地 releases/ 目录快速重新安装
-bash scripts/release_manager/install_chunks_local.sh 0.1.0
+bash scripts/release_manager/install_chunks_local.sh 0.1.1
 # → 无需下载，快速安装
 ```
 
@@ -266,9 +251,10 @@ bash scripts/release_manager/install_chunks_local.sh 0.1.0
 ```
 matrix/
 ├── releases/                    # 下载的包（运行 install_chunks.sh 后创建）
-│   ├── base-0.1.0.tar.gz       # 基础包
-│   ├── shared-0.1.0.tar.gz     # 共享资源
-│   └── *.tar.gz                # 地图包
+│   ├── assets-0.1.1.tar.gz     # 资源文件包（必需）
+│   ├── base-0.1.1.tar.gz       # 基础包（必需）
+│   ├── shared-0.1.1.tar.gz     # 共享资源（推荐）
+│   └── *.tar.gz                # 地图包（可选）
 │
 └── src/UeSim/Linux/jszr_mujoco_ue/  # 运行时目录（包安装位置）
     └── Content/Paks/            # 已安装的分块文件 (.pak, .ucas, .utoc)
@@ -322,21 +308,18 @@ matrix/
 
 ### 常见问题
 
-**1. "jszr_mujoco executable not found" 或 "invalid ELF header" 错误**
+**1. "zsibot_mujoco executable not found" 或 "invalid ELF header" 错误**
 
 **解决方案：**
 ```bash
-# 检查 Git LFS 文件是否正确下载
-git lfs ls-files | grep jszr_mujoco
-
-# 如果文件显示为指针（小文件），拉取 LFS 内容：
-git lfs pull
+# 确保 assets 包已安装（包含二进制文件和库）
+bash scripts/release_manager/install_chunks.sh 0.1.1
 
 # 然后重新构建（如需要）
 ./scripts/build_mujoco_sdk.sh
 
 # 验证可执行文件是否存在且大小正确
-ls -lh src/robot_mujoco/simulate/build/jszr_mujoco
+ls -lh src/robot_mujoco/simulate/build/zsibot_mujoco
 ```
 
 **2. "Build directory does not exist" 错误**
@@ -357,33 +340,25 @@ cmake --build build -j$(nproc)
 - 检查日志文件：`cat src/robot_mujoco/simulate/build/robot_mujoco.log`
 - 验证 UE5 可执行文件是否存在：`ls src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/`
 
-**4. 缺少地图文件或 LFS 文件未下载**
+**4. 缺少地图文件或资源文件**
 
 **解决方案：**
 ```bash
-# 首先，确保 Git LFS 文件已下载
-git lfs pull
-
-# 然后重新安装缺失的地图
-bash scripts/release_manager/install_chunks.sh 0.1.0
+# 重新安装分块包（包含 assets 包，包含二进制文件和库）
+bash scripts/release_manager/install_chunks.sh 0.1.1
 # 在提示时选择缺失的地图
+# Assets 包将自动下载并安装
 ```
 
-**5. Git LFS 文件显示为小的指针文件**
+**5. 缺少二进制文件或库**
 
-**症状：** 文件如 `.so`、`.uasset`、`.pak` 显示为小的文本文件（指针文件）。
+**症状：** 文件如 `sim_launcher`、`.so` 文件缺失或太小。
 
 **解决方案：**
 ```bash
-# 如果未安装，先安装 Git LFS
-sudo apt-get install git-lfs
-git lfs install
-
-# 拉取 LFS 内容
-git lfs pull
-
-# 验证文件是否正确下载
-git lfs ls-files
+# 从 GitHub Releases 安装 assets 包
+bash scripts/release_manager/install_chunks.sh 0.1.1
+# Assets 包包含所有运行时二进制文件和库
 ```
 
 ---
@@ -393,39 +368,44 @@ git lfs ls-files
 <div align="center">
 
 | **地图**         | **演示截图**                          | **地图**         | **演示截图**                          |
-|:---------------:|:-----------------------------------:|:---------------:|:-------------------------------------:|
-| **Venice**      | <img src="demo_gif/Venice.gif" alt="Matrix Demo Screenshot" width="350" height="200"/> | **Warehouse**   | <img src="demo_gif/whmap.gif" alt="Matrix Warehouse Demo" width="350" height="200"/> |
-| **Town10**      | <img src="demo_gif/Town10.gif" alt="Matrix Town Demo" width="350" height="200"/>       | **Yard**        | <img src="demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="350" height="200"/> |
+|:---------------:|:-------------------------------------------:|:---------------:|:-------------------------------------------:|
+| **Venice**      | <img src="../demo_gif/Venice.gif" alt="Matrix Demo Screenshot" width="350" height="200"/> | **Warehouse**   | <img src="../demo_gif/whmap.gif" alt="Matrix Warehouse Demo" width="350" height="200"/> |
+| **Town10**      | <img src="../demo_gif/Town10.gif" alt="Matrix Town Demo" width="350" height="200"/>       | **Yard**        | <img src="../demo_gif/Yardmap.gif" alt="Matrix Yardmap Demo" width="350" height="200"/> |
 
 </div>
 
-> **说明：** 地图描述见 [doc](docs/README_1.md)。上述截图展示了用于机器人和强化学习实验的高保真 UE5 渲染效果。
+> **说明：** 地图描述见 [README_1.md](README_1.md)。上述截图展示了用于机器人和强化学习实验的高保真 UE5 渲染效果。
 
 ---
 
 ## ▶️ 运行仿真
 
 <div align="center">
-  <img src="demo_gif/Launcher.png" alt="Simulation Running Example" width="50%" />
+  <img src="../demo_gif/Launcher.png" alt="Simulation Running Example" width="50%" />
 </div>
 
 ## 🐕 仿真设置指南
 
-1. **选择机器人类型**  
+1. **运行启动器**
+  ```bash
+      cd matrix
+      ./sim_launcher
+  ```
+  2. **选择机器人类型**  
    选择用于仿真的四足机器人类型。
 
-2. **选择环境**  
+  3. **选择环境**  
    选择所需的仿真环境或地图。
 
-3. **选择控制设备**  
+  4. **选择控制设备**  
    选择首选控制设备：  
    - **Gamepad Control**  
    - **Keyboard Control**
 
-4. **启用无界面模式（可选）**  
+  5. **启用无界面模式（可选）**  
    切换 **Headless Mode** 以在无图形界面的情况下运行仿真。
 
-5. **启动仿真**  
+  6. **启动仿真**  
    点击 **Launch Simulation** 按钮以开始仿真。
 
 仿真运行期间，如果 UE 窗口处于激活状态，可按 **ALT + TAB** 切换出窗口。  
@@ -457,6 +437,11 @@ git lfs ls-files
 ---
 
 ## 🔧 配置指南
+
+### 自定义场景设置
+- 按照 `matrix/scene/` 中的现有格式，在 json 文件中编写您的自定义场景，详细信息请参阅 [教程文档](README_2.md)。
+- 将您的自定义场景文件放在 `matrix/scene/scene.json` 文件中。
+- 从启动器中选择自定义地图以在仿真中加载它。
 
 ### 调整传感器配置
 
@@ -524,7 +509,7 @@ vim matrix/config/config.json
    在 RViz 中打开 `rviz/matrix.rviz`，该文件提供预配置视图。
 
 <div align="center">
-  <img src="./demo_gif/rviz2.png" alt="RViz Visualization Example" width="1280" height="720"/>
+  <img src="../demo_gif/rviz2.png" alt="RViz Visualization Example" width="1280" height="720"/>
 </div>
 
 > **提示：** 确保已正确 source ROS 环境并且相关话题已被发布。
@@ -534,6 +519,8 @@ vim matrix/config/config.json
 - [x] IROS 比赛地图（4 张地图）
 - [x] 支持第三方四足机器人模型
 - [x] 支持基于 json 文件的自定义场景
+- [x] 添加 3DGS 重建地图
+- [x] 添加基于动态地面的月球地图
 - [ ] 添加多机器人仿真能力
 
 ---
@@ -557,6 +544,14 @@ vim matrix/config/config.json
 - [Chunk Packages 使用指南](CHUNK_PACKAGES_GUIDE.md) - 模块化打包部署说明
 - [机器人类型与地图选择](README_1.md) - 详细的机器人类型和地图说明（含图片）
 - [自定义场景指南](README_2.md) - 通过 JSON 文件创建自定义场景
-- [Git LFS 使用指南](GIT_LFS_GUIDE.md) - 大文件管理指南（面向开发者）
+
+---
+
+## 📚 文档
+
+- [English Documentation](../README.md) - 英文使用指南
+- [Chunk Packages 使用指南](CHUNK_PACKAGES_GUIDE.md) - 模块化打包部署说明
+- [机器人类型与地图选择](README_1.md) - 详细的机器人类型和地图说明（含图片）
+- [自定义场景指南](README_2.md) - 通过 JSON 文件创建自定义场景
 
 ---

@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 cd "$PROJECT_ROOT"
 
-VERSION="${1:-0.0.4}"
+VERSION="${1:-0.1.1}"
 REPO="zsibot/matrix"
 RELEASE_DIR="releases"
 MAX_SIZE=2147483648  # 2GB in bytes (GitHub Releases limit)
@@ -104,12 +104,14 @@ if [ ! -d "$RELEASE_DIR" ]; then
     error_exit "Release 目录不存在: $RELEASE_DIR"
 fi
 
-# 检查基础包和共享包是否存在
+# 检查基础包是否存在
 if [ ! -f "${RELEASE_DIR}/base-${VERSION}.tar.gz" ]; then
     error_exit "基础包不存在: ${RELEASE_DIR}/base-${VERSION}.tar.gz"
 fi
-if [ ! -f "${RELEASE_DIR}/shared-${VERSION}.tar.gz" ]; then
-    error_exit "共享资源包不存在: ${RELEASE_DIR}/shared-${VERSION}.tar.gz"
+
+# 检查共享包是否存在（可能是分片文件）
+if [ ! -f "${RELEASE_DIR}/shared-${VERSION}.tar.gz" ] && [ ! -f "${RELEASE_DIR}/shared-${VERSION}.tar.part000" ]; then
+    error_exit "共享资源包不存在: ${RELEASE_DIR}/shared-${VERSION}.tar.gz（也未找到分片文件）"
 fi
 
 # 收集所有需要上传的文件
@@ -147,11 +149,54 @@ if [ -f "${RELEASE_DIR}/shared-${VERSION}.tar.gz" ]; then
         files_to_upload+=("${RELEASE_DIR}/shared-${VERSION}.tar.gz")
         file_sizes["${RELEASE_DIR}/shared-${VERSION}.tar.gz"]=$size
     fi
+elif [ -f "${RELEASE_DIR}/shared-${VERSION}.tar.part000" ]; then
+    # 原文件不存在但分片文件存在（原文件已被分片后删除）
+    for part_file in "${RELEASE_DIR}/shared-${VERSION}.tar.part"* "${RELEASE_DIR}/shared-${VERSION}.tar.merge.sh" "${RELEASE_DIR}/shared-${VERSION}.tar.sha256"; do
+        if [ -f "$part_file" ]; then
+            files_to_upload+=("$part_file")
+            part_size=$(stat -c%s "$part_file" 2>/dev/null || stat -f%z "$part_file" 2>/dev/null || echo 0)
+            file_sizes["$part_file"]=$part_size
+        fi
+    done
+fi
+
+# 资源文件包（检查是否需要分片）
+if [ -f "${RELEASE_DIR}/assets-${VERSION}.tar.gz" ]; then
+    size=$(stat -c%s "${RELEASE_DIR}/assets-${VERSION}.tar.gz" 2>/dev/null || stat -f%z "${RELEASE_DIR}/assets-${VERSION}.tar.gz" 2>/dev/null || echo 0)
+    if [ "$size" -gt "$MAX_SIZE" ]; then
+        # 超过 2GB，检查是否有分片文件
+        if [ -f "${RELEASE_DIR}/assets-${VERSION}.tar.part000" ]; then
+            # 添加分片文件
+            for part_file in "${RELEASE_DIR}/assets-${VERSION}.tar.part"* "${RELEASE_DIR}/assets-${VERSION}.tar.merge.sh" "${RELEASE_DIR}/assets-${VERSION}.tar.sha256"; do
+                if [ -f "$part_file" ]; then
+                    files_to_upload+=("$part_file")
+                    part_size=$(stat -c%s "$part_file" 2>/dev/null || stat -f%z "$part_file" 2>/dev/null || echo 0)
+                    file_sizes["$part_file"]=$part_size
+                fi
+            done
+        else
+            # 没有分片文件，跳过（需要先分片）
+            log "⚠️  assets-${VERSION}.tar.gz 超过 2GB 但未分片，跳过"
+        fi
+    else
+        # 小于 2GB，直接添加
+        files_to_upload+=("${RELEASE_DIR}/assets-${VERSION}.tar.gz")
+        file_sizes["${RELEASE_DIR}/assets-${VERSION}.tar.gz"]=$size
+    fi
+elif [ -f "${RELEASE_DIR}/assets-${VERSION}.tar.part000" ]; then
+    # 原文件不存在但分片文件存在（原文件已被分片后删除）
+    for part_file in "${RELEASE_DIR}/assets-${VERSION}.tar.part"* "${RELEASE_DIR}/assets-${VERSION}.tar.merge.sh" "${RELEASE_DIR}/assets-${VERSION}.tar.sha256"; do
+        if [ -f "$part_file" ]; then
+            files_to_upload+=("$part_file")
+            part_size=$(stat -c%s "$part_file" 2>/dev/null || stat -f%z "$part_file" 2>/dev/null || echo 0)
+            file_sizes["$part_file"]=$part_size
+        fi
+    done
 fi
 
 # 地图包
 for file in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
-    if [ -f "$file" ] && [[ "$file" != *"base-${VERSION}.tar.gz" ]] && [[ "$file" != *"shared-${VERSION}.tar.gz" ]]; then
+    if [ -f "$file" ] && [[ "$file" != *"base-${VERSION}.tar.gz" ]] && [[ "$file" != *"shared-${VERSION}.tar.gz" ]] && [[ "$file" != *"assets-${VERSION}.tar.gz" ]] && [[ "$file" != *"lfs-files-${VERSION}.tar.gz" ]]; then
         filename=$(basename "$file")
         base_name="${filename%.tar.gz}"
         size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
@@ -323,7 +368,7 @@ current_upload_num=0
 
 # 一次性上传所有文件（包括基础包、共享包、地图包、分片文件、manifest）
 log_section "[3] 批量上传所有文件"
-log "开始上传 ${files_to_upload_count} 个文件（包括基础包、共享包、地图包、分片文件）..."
+log "开始上传 ${files_to_upload_count} 个文件（包括基础包、共享包、资源文件包、地图包、分片文件）..."
 echo ""
 
 map_count=0
@@ -332,6 +377,7 @@ skipped_count=0
 skip_count=0
 base_uploaded=false
 shared_uploaded=false
+assets_uploaded=false
 
 for file in "${files_to_upload[@]}"; do
     if [ ! -f "$file" ]; then
@@ -351,6 +397,8 @@ for file in "${files_to_upload[@]}"; do
             base_uploaded=true
         elif [[ "$filename" == "shared-${VERSION}.tar.gz" ]] || [[ "$filename" == shared-*.tar.part* ]] || [[ "$filename" == shared-*.tar.merge.sh ]] || [[ "$filename" == shared-*.tar.sha256 ]]; then
             shared_uploaded=true
+        elif [[ "$filename" == "assets-${VERSION}.tar.gz" ]] || [[ "$filename" == assets-*.tar.part* ]] || [[ "$filename" == assets-*.tar.merge.sh ]] || [[ "$filename" == assets-*.tar.sha256 ]]; then
+            assets_uploaded=true
         fi
         continue
     fi
@@ -369,6 +417,8 @@ for file in "${files_to_upload[@]}"; do
             base_uploaded=true
         elif [[ "$filename" == "shared-${VERSION}.tar.gz" ]] || [[ "$filename" == shared-*.tar.part* ]] || [[ "$filename" == shared-*.tar.merge.sh ]] || [[ "$filename" == shared-*.tar.sha256 ]]; then
             shared_uploaded=true
+        elif [[ "$filename" == "assets-${VERSION}.tar.gz" ]] || [[ "$filename" == assets-*.tar.part* ]] || [[ "$filename" == assets-*.tar.merge.sh ]] || [[ "$filename" == assets-*.tar.sha256 ]]; then
+            assets_uploaded=true
         elif [[ "$filename" == *-${VERSION}.tar.gz ]]; then
             map_count=$((map_count + 1))
         elif [[ "$filename" == *.part* ]] || [[ "$filename" == *.merge.sh ]] || [[ "$filename" == *.sha256 ]]; then
@@ -389,6 +439,11 @@ if [ "$shared_uploaded" = true ]; then
     log "  - 共享资源包: ✓ 已上传（包括分片文件）"
 else
     log "  - 共享资源包: ⚠️  未上传"
+fi
+if [ "$assets_uploaded" = true ]; then
+    log "  - 资源文件包: ✓ 已上传（包括分片文件）"
+else
+    log "  - 资源文件包: ⚠️  未上传"
 fi
 log "  - 地图包: ${map_count} 个"
 log "  - 分片文件: ${split_count} 个"
@@ -475,6 +530,7 @@ total_uploaded=$(gh release view "v${VERSION}" --repo "$REPO" --json assets -q '
 echo "  - 总文件数: ${total_uploaded}"
 echo "  - 基础包: $(if [ -f "${RELEASE_DIR}/base-${VERSION}.tar.gz" ]; then file_size=$(stat -c%s "${RELEASE_DIR}/base-${VERSION}.tar.gz" 2>/dev/null || echo 0); if [ "$file_size" -le "$MAX_SIZE" ]; then echo "已上传"; else echo "已跳过（超过2GB）"; fi; else echo "不存在"; fi)"
 echo "  - 共享资源包: $(if [ -f "${RELEASE_DIR}/shared-${VERSION}.tar.gz" ]; then file_size=$(stat -c%s "${RELEASE_DIR}/shared-${VERSION}.tar.gz" 2>/dev/null || echo 0); if [ "$file_size" -le "$MAX_SIZE" ]; then echo "已上传"; else echo "已跳过（超过2GB）"; fi; else echo "不存在"; fi)"
+echo "  - 资源文件包: $(if [ "$assets_uploaded" = true ]; then echo "已上传"; else echo "未上传"; fi)"
 echo "  - 地图包: ${map_count} 个已上传"
 if [ "$split_count" -gt 0 ]; then
     echo "  - 分割文件: ${split_count} 个大文件已分割上传"
