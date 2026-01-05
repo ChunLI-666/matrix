@@ -10,9 +10,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 加载公共函数库
 source "${SCRIPT_DIR}/common.sh"
 
-VERSION="${1:-0.0.4}"
+VERSION="${1:-0.1.1}"
 RELEASE_DIR="${PROJECT_ROOT}/releases"
-TARGET_DIR="${PROJECT_ROOT}/src/UeSim/Linux/jszr_mujoco_ue"
+TARGET_DIR="${PROJECT_ROOT}/src/UeSim/Linux/zsibot_mujoco_ue"
 PAK_DIR="${TARGET_DIR}/Content/Paks"
 
 # 检查发布目录
@@ -26,7 +26,44 @@ log_section "MATRiX Chunk包本地安装器 v${VERSION}"
 mkdir -p "$PAK_DIR"
 mkdir -p "$TARGET_DIR/Content/model"
 
-log_section "[1] 安装基础包 (必需)"
+log_section "[1] 安装资源文件包 (必需)"
+{
+    ASSETS_FILE="${RELEASE_DIR}/assets-${VERSION}.tar.gz"
+    if [ -f "$ASSETS_FILE" ]; then
+        # 检查 assets 包是否为空（只有目录结构）
+        file_count=$(tar -tzf "$ASSETS_FILE" 2>/dev/null | grep -v "/$" | wc -l)
+        if [ "$file_count" -eq 0 ]; then
+            log "⚠️  资源文件包为空（只包含目录结构，没有实际文件）"
+            log "   这通常意味着原始文件已被删除，需要重新打包 assets 包"
+            log "   跳过安装（如果文件已存在则不影响）"
+        else
+            log "解压资源文件包（包含 ${file_count} 个文件）..."
+            # 资源文件包解压到项目根目录，保持目录结构
+            if extract_tar "$ASSETS_FILE" "${PROJECT_ROOT}"; then
+                log "✓ 资源文件包安装完成"
+                
+                # 验证关键文件是否存在
+                if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
+                    launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
+                    if [ "$launcher_size" -gt 1000000 ]; then
+                        log "✓ 资源文件验证通过: sim_launcher (${launcher_size} 字节)"
+                    else
+                        log "⚠️  资源文件可能未正确安装: sim_launcher 文件过小 (${launcher_size} 字节)"
+                    fi
+                else
+                    log "⚠️  关键文件缺失: bin/sim_launcher 未找到"
+                    log "   请检查 assets 包是否完整"
+                fi
+            else
+                log "⚠️  资源文件包解压失败，跳过"
+            fi
+        fi
+    else
+        log "⚠️  资源文件包不存在，跳过（如果文件已存在则不影响）"
+    fi
+}
+
+log_section "[2] 安装基础包 (必需)"
 {
     BASE_FILE="${RELEASE_DIR}/base-${VERSION}.tar.gz"
     if [ ! -f "$BASE_FILE" ]; then
@@ -37,6 +74,9 @@ log_section "[1] 安装基础包 (必需)"
     if extract_tar "$BASE_FILE" "$TARGET_DIR"; then
         # 使用公共函数移动 chunk 文件
         move_chunk_files_to_paks "${TARGET_DIR}/Content/Paks" "$PAK_DIR"
+        
+        # 从 UeSim 目录拷贝模型到 robot_mujoco 目录
+        copy_models_from_uesim_to_robot_mujoco
     else
         error_exit "基础包解压失败"
     fi
@@ -44,7 +84,7 @@ log_section "[1] 安装基础包 (必需)"
     log "✓ 基础包安装完成"
 }
 
-log_section "[2] 安装共享资源包 (推荐)"
+log_section "[3] 安装共享资源包 (推荐)"
 {
     SHARED_FILE="${RELEASE_DIR}/shared-${VERSION}.tar.gz"
     if [ -f "$SHARED_FILE" ]; then
@@ -56,7 +96,7 @@ log_section "[2] 安装共享资源包 (推荐)"
     fi
 }
 
-log_section "[3] 安装地图包 (可选)"
+log_section "[4] 安装地图包 (可选)"
 {
     # 检查并合并分片文件
     for merge_script in "${RELEASE_DIR}"/*.merge.sh; do
@@ -88,8 +128,8 @@ log_section "[3] 安装地图包 (可选)"
     current_map=0
     
     for map_tar in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
-        # 跳过 base 和 shared
-        if [[ "$(basename "$map_tar")" == base-* ]] || [[ "$(basename "$map_tar")" == shared-* ]]; then
+        # 跳过 base、shared 和 assets
+        if [[ "$(basename "$map_tar")" == base-* ]] || [[ "$(basename "$map_tar")" == shared-* ]] || [[ "$(basename "$map_tar")" == assets-* ]]; then
             continue
         fi
         if [ -f "$map_tar" ]; then
@@ -143,18 +183,31 @@ log_section "[3] 安装地图包 (可选)"
     fi
 }
 
-log_section "[4] 验证安装"
+log_section "[5] 验证安装"
 {
     # 使用公共函数验证安装
     verify_installation "$PAK_DIR"
+    
+    # 验证资源文件是否已安装
+    if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
+        launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
+        if [ "$launcher_size" -gt 1000000 ]; then
+            log "✓ 资源文件验证通过: sim_launcher (${launcher_size} 字节)"
+        else
+            log "⚠️  资源文件可能未正确安装: sim_launcher 文件过小 (${launcher_size} 字节)"
+        fi
+    fi
 }
 
-log_section "[5] 完成"
+log_section "[6] 完成"
 {
     echo ""
     echo "✅ Chunk包安装完成！"
     echo ""
     echo "已安装的包:"
+    if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
+        echo "  - 资源文件包"
+    fi
     echo "  - 基础包 (Chunk 0)"
     if [ -f "${PAK_DIR}/pakchunk1-Linux.pak" ]; then
         echo "  - 共享资源包 (Chunk 1)"

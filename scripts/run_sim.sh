@@ -104,13 +104,13 @@ if [ -f "$PROJECT_ROOT/config/config.json" ]; then
     rm -f "$PROJECT_ROOT/tmp_config.json"
     
     # Copy config.json to UeSim directory
-    cp "$PROJECT_ROOT/config/config.json" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json"
+    cp "$PROJECT_ROOT/config/config.json" "$PROJECT_ROOT/src/UeSim/Linux/zsibot_mujoco_ue/Content/model/config/config.json"
     
     # Read robot position from config.json and update XML file
     ROBOT_X=$(jq -r '.robot.position.x' "$PROJECT_ROOT/config/config.json")
     ROBOT_Y=$(jq -r '.robot.position.y' "$PROJECT_ROOT/config/config.json")
     
-    XML_FILE="$PROJECT_ROOT/src/robot_mujoco/jszr_robots/${ROBOTTYPE}/${ROBOTTYPE}.xml"
+    XML_FILE="$PROJECT_ROOT/src/robot_mujoco/zsibot_robots/${ROBOTTYPE}/${ROBOTTYPE}.xml"
     if [ -f "$XML_FILE" ]; then
         sed -i "s/<body name=\"base_link\" pos=\"[^\"]*\"/<body name=\"base_link\" pos=\"${ROBOT_X} ${ROBOT_Y} 0.65\"/" "$XML_FILE"
         echo "[INFO] Updated robot position to (${ROBOT_X}, ${ROBOT_Y}) in ${XML_FILE}"
@@ -120,13 +120,13 @@ if [ -f "$PROJECT_ROOT/config/config.json" ]; then
     
     # Copy scene.json if exists
     if [ -f "$PROJECT_ROOT/scene/scene.json" ]; then
-        cp "$PROJECT_ROOT/scene/scene.json" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/SceneLoder/scene.json"
+        cp "$PROJECT_ROOT/scene/scene.json" "$PROJECT_ROOT/src/UeSim/Linux/zsibot_mujoco_ue/Content/model/SceneLoder/scene.json"
         echo "[INFO] Copied scene.json to UeSim directory"
     fi
 else
     # Fallback to direct update of UeSim config.json
-    if [ -f "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json" ]; then
-        jq ".robot.robot_type = \"$ROBOTTYPE\" | .robot.weapon = \"$WEAPON\"" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json" > "$PROJECT_ROOT/tmp_config.json" && mv "$PROJECT_ROOT/tmp_config.json" "$PROJECT_ROOT/src/UeSim/Linux/jszr_mujoco_ue/Content/model/config/config.json"
+    if [ -f "$PROJECT_ROOT/src/UeSim/Linux/zsibot_mujoco_ue/Content/model/config/config.json" ]; then
+        jq ".robot.robot_type = \"$ROBOTTYPE\" | .robot.weapon = \"$WEAPON\"" "$PROJECT_ROOT/src/UeSim/Linux/zsibot_mujoco_ue/Content/model/config/config.json" > "$PROJECT_ROOT/tmp_config.json" && mv "$PROJECT_ROOT/tmp_config.json" "$PROJECT_ROOT/src/UeSim/Linux/zsibot_mujoco_ue/Content/model/config/config.json"
         rm -f "$PROJECT_ROOT/tmp_config.json"
     else
         echo "[WARNING] config.json not found in either location"
@@ -137,7 +137,7 @@ echo "[INFO] Killing old processes if they exist..."
 
 ps -ef | grep robot_mujoco | grep -v grep | awk '{print $2}' | xargs -r kill -9
 pkill -f mc_ctrl && echo "[INFO] Killed mc_ctrl (run_mc.sh)" || echo "[INFO] mc_ctrl not running"
-pkill -f jszr_mujoco_ue.sh && echo "[INFO] Killed robot_mujoco_ue.sh" || echo "[INFO] robot_mujoco_ue.sh not running"
+pkill -f zsibot_mujoco_ue.sh && echo "[INFO] Killed robot_mujoco_ue.sh" || echo "[INFO] robot_mujoco_ue.sh not running"
 
 sleep 1
 echo "[INFO] Current working directory: $(pwd)"
@@ -152,14 +152,14 @@ if [ ! -d "$MUJOCO_BUILD_DIR" ]; then
 fi
 
 cd "$MUJOCO_BUILD_DIR" || { echo "cd $MUJOCO_BUILD_DIR failed"; exit 1; }
-if [ ! -f "./jszr_mujoco" ]; then
-    echo "[ERROR] jszr_mujoco executable not found in $MUJOCO_BUILD_DIR"
+if [ ! -f "./zsibot_mujoco" ]; then
+    echo "[ERROR] zsibot_mujoco executable not found in $MUJOCO_BUILD_DIR"
     echo "[INFO] Please build the project first using: ./scripts/build.sh"
     exit 1
 fi
 echo "[INFO] Starting robot_mujoco"
-./jszr_mujoco > robot_mujoco.log 2>&1 &
-PID_JSZR=$!
+./zsibot_mujoco > robot_mujoco.log 2>&1 &
+PID_ZSIBOT=$!
 
 cd "$PROJECT_ROOT/src/robot_mc" || { echo "cd src/robot_mc failed"; exit 1; }
 if [[ $MCRUNNINGFLAG -eq 0 ]]; then
@@ -175,9 +175,9 @@ cd "$PROJECT_ROOT/src/UeSim/Linux" || { echo "cd src/UeSim/Linux failed"; exit 1
 echo "[INFO] Starting robot_mujoco_ue.sh"
 
 if [[ $USE_OFFSCREEN -eq 1 ]]; then
-    ./jszr_mujoco_ue.sh -RenderOffScreen > robot_mujoco_ue.log 2>&1 &
+    ./zsibot_mujoco_ue.sh -RenderOffScreen > robot_mujoco_ue.log 2>&1 &
 else
-    ./jszr_mujoco_ue.sh > robot_mujoco_ue.log 2>&1 &
+    ./zsibot_mujoco_ue.sh > robot_mujoco_ue.log 2>&1 &
 fi
 PID_UESIM=$!
 
@@ -189,36 +189,36 @@ PID_UESIM=$!
 
 echo "[INFO] All started. Waiting for processes..."
 if [ -n "$PID_MC" ]; then
-    wait $PID_JSZR $PID_MC $PID_UESIM $PID_PUBTF
+    wait $PID_ZSIBOT $PID_MC $PID_UESIM $PID_PUBTF
 else
-    wait $PID_JSZR $PID_UESIM $PID_PUBTF
+    wait $PID_ZSIBOT $PID_UESIM $PID_PUBTF
 fi
 echo "[INFO] All processes exited."
 
 trap "echo '[INFO] Caught SIGINT, killing all child processes...'; \
-    kill -9 $PID_JSZR $PID_UESIM 2>/dev/null; \
+    kill -9 $PID_ZSIBOT $PID_UESIM 2>/dev/null; \
     [ -n \"\$PID_MC\" ] && kill -9 \$PID_MC 2>/dev/null; \
     [ -n \"\$PID_PUBTF\" ] && kill -9 \$PID_PUBTF 2>/dev/null; \
-    pkill -9 -f jszr_mujoco_ue.sh; \
+    pkill -9 -f zsibot_mujoco_ue.sh; \
     pkill -9 -f robot_mujoco; \
     pkill -9 -f mc_ctrl; \
     pkill -9 -f mujoco; \
     pkill -9 -f MuJoCo; \
     pkill -9 -f tf_manager; \
     wmctrl -c 'MuJoCo' 2>/dev/null; \
-    wmctrl -c 'jszr_mujoco_ue' 2>/dev/null; \
+    wmctrl -c 'zsibot_mujoco_ue' 2>/dev/null; \
     exit 1" SIGINT
 
 trap "echo '[INFO] Caught SIGTERM, killing all child processes...'; \
-    kill -9 $PID_JSZR $PID_UESIM 2>/dev/null; \
+    kill -9 $PID_ZSIBOT $PID_UESIM 2>/dev/null; \
     [ -n \"\$PID_MC\" ] && kill -9 \$PID_MC 2>/dev/null; \
     [ -n \"\$PID_PUBTF\" ] && kill -9 \$PID_PUBTF 2>/dev/null; \
-    pkill -9 -f jszr_mujoco_ue.sh; \
+    pkill -9 -f zsibot_mujoco_ue.sh; \
     pkill -9 -f robot_mujoco; \
     pkill -9 -f mc_ctrl; \
     pkill -9 -f mujoco; \
     pkill -9 -f MuJoCo; \
     pkill -9 -f tf_manager; \
     wmctrl -c 'MuJoCo' 2>/dev/null; \
-    wmctrl -c 'jszr_mujoco_ue' 2>/dev/null; \
+    wmctrl -c 'zsibot_mujoco_ue' 2>/dev/null; \
     exit 1" SIGTERM
