@@ -23,12 +23,12 @@ show_upload_progress() {
     local total=$2
     local filename=$3
     local file_size_mb=$4
-    
+
     local percent=$((current * 100 / total))
     local bar_length=30
     local filled=$((percent * bar_length / 100))
     local empty=$((bar_length - filled))
-    
+
     printf "\r[进度] ["
     printf "%${filled}s" | tr ' ' '='
     printf "%${empty}s" | tr ' ' '-'
@@ -43,27 +43,61 @@ upload_file_with_progress() {
     local filename=$(basename "$file")
     local file_size=${file_sizes["$file"]:-0}
     local file_size_mb=$((file_size / 1024 / 1024))
-    
+
     # 显示开始上传
     show_upload_progress "$current_num" "$total_num" "$filename" "$file_size_mb"
     echo ""
-    
+
     # 记录开始时间
     local start_time=$(date +%s)
-    
+
     # 执行上传（在后台运行，同时显示进度）
     local upload_pid
     local temp_output=$(mktemp)
-    
+
+    # #region agent log
+    local upload_cmd="gh release upload \"v${VERSION}\" \"$file\" --repo \"$REPO\" --clobber"
+    echo "{\"id\":\"log_$(date +%s)_upload_cmd\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:58\",\"message\":\"Upload command\",\"data\":{\"filename\":\"$filename\",\"command\":\"$upload_cmd\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}" >> "$log_file"
+    # #endregion
+
     if gh release upload "v${VERSION}" "$file" --repo "$REPO" --clobber > "$temp_output" 2>&1; then
         local end_time=$(date +%s)
         local duration=$((end_time - start_time))
         local speed_mb=$(echo "scale=2; $file_size_mb / $duration" | bc 2>/dev/null || echo "0")
-        
+
+        # #region agent log
+        echo "{\"id\":\"log_$(date +%s)_upload_success\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:80\",\"message\":\"Upload success\",\"data\":{\"filename\":\"$filename\",\"duration\":$duration,\"speed_mb\":$speed_mb},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}" >> "$log_file"
+        # #endregion
+
         printf "\r[完成] ✓ %s (%dMB, 耗时: %ds, 速度: %.2fMB/s)\n" "$filename" "$file_size_mb" "$duration" "$speed_mb"
         rm -f "$temp_output"
         return 0
     else
+        # #region agent log
+        local error_output=$(cat "$temp_output" 2>/dev/null || echo "")
+        echo "{\"id\":\"log_$(date +%s)_upload_failure\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:92\",\"message\":\"Upload command failed\",\"data\":{\"filename\":\"$filename\",\"error_output\":\"$error_output\",\"file_size\":$file_size,\"actual_size\":$actual_size},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}" >> "$log_file"
+        # #endregion
+
+        # 检查文件是否实际上传成功（可能是GitHub API的临时错误，但文件实际上传了）
+        local uploaded_asset=$(gh release view "v${VERSION}" --repo "$REPO" --json assets --jq ".assets[] | select(.name == \"$filename\")" 2>/dev/null)
+        if [ -n "$uploaded_asset" ] && [ "$uploaded_asset" != "null" ]; then
+            local uploaded_size=$(echo "$uploaded_asset" | jq -r '.size' 2>/dev/null || echo "0")
+            # #region agent log
+            echo "{\"id\":\"log_$(date +%s)_upload_verify\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:96\",\"message\":\"File actually uploaded despite error\",\"data\":{\"filename\":\"$filename\",\"uploaded_size\":$uploaded_size,\"expected_size\":$file_size},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}" >> "$log_file"
+            # #endregion
+
+            # 检查大小是否匹配（允许1MB的误差）
+            local size_diff=$((file_size - uploaded_size))
+            if [ "${size_diff#-}" -lt 1048576 ]; then
+                local end_time=$(date +%s)
+                local duration=$((end_time - start_time))
+                local speed_mb=$(echo "scale=2; $file_size_mb / $duration" | bc 2>/dev/null || echo "0")
+                printf "\r[完成] ✓ %s (%dMB, 耗时: %ds, 速度: %.2fMB/s) [已存在]\n" "$filename" "$file_size_mb" "$duration" "$speed_mb"
+                rm -f "$temp_output"
+                return 0
+            fi
+        fi
+
         printf "\r[失败] ⚠️  %s 上传失败\n" "$filename"
         cat "$temp_output" >&2
         rm -f "$temp_output"
@@ -200,7 +234,7 @@ for file in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
         filename=$(basename "$file")
         base_name="${filename%.tar.gz}"
         size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
-        
+
         # 如果文件超过2GB，检查是否有分片文件
         if [ "$size" -gt "$MAX_SIZE" ] && { [ -f "${RELEASE_DIR}/${base_name}.part000" ] || [ -f "${RELEASE_DIR}/${base_name}.tar.part000" ]; }; then
             # 已分割，添加分片文件而不是原始文件
@@ -210,7 +244,7 @@ for file in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
             else
                 pattern="${RELEASE_DIR}/${base_name}.tar"
             fi
-            
+
             for part_file in "${pattern}.part"* "${pattern}.merge.sh" "${pattern}.sha256"; do
                 if [ -f "$part_file" ]; then
                     files_to_upload+=("$part_file")
@@ -258,20 +292,38 @@ log_section "[2] 上传文件到 GitHub Release v${VERSION}"
 # 检查 Release 是否存在，不存在则创建
 if ! gh release view "v${VERSION}" --repo "$REPO" &>/dev/null; then
     log "创建 Release v${VERSION}..."
+    # 确保基于 upstream/main 分支的最新提交创建 Release
+    # 先获取 upstream/main 的最新提交 SHA
+    log "获取 upstream/main 分支的最新提交..."
+    git fetch upstream main 2>/dev/null || log "⚠️  无法获取 upstream/main，将使用本地 main 分支"
+
+    # 尝试使用 upstream/main，如果不存在则使用 main
+    if git rev-parse --verify upstream/main >/dev/null 2>&1; then
+        TARGET_COMMIT=$(git rev-parse upstream/main)
+        TARGET_BRANCH="upstream/main"
+        log "使用 ${TARGET_BRANCH} 的最新提交: ${TARGET_COMMIT:0:8}"
+    else
+        TARGET_COMMIT=$(git rev-parse main)
+        TARGET_BRANCH="main"
+        log "使用 ${TARGET_BRANCH} 的最新提交: ${TARGET_COMMIT:0:8}"
+    fi
+
     if [ -f "${RELEASE_DIR}/README.md" ]; then
         gh release create "v${VERSION}" \
             --repo "$REPO" \
+            --target "${TARGET_COMMIT}" \
             --title "MATRiX v${VERSION} - Modular Chunk Packages" \
             --notes-file "${RELEASE_DIR}/README.md" \
             --draft
     else
         gh release create "v${VERSION}" \
             --repo "$REPO" \
+            --target "${TARGET_COMMIT}" \
             --title "MATRiX v${VERSION} - Modular Chunk Packages" \
             --notes "MATRiX v${VERSION} - Modular Chunk Packages" \
             --draft
     fi
-    log "✓ Release 已创建（草稿状态）"
+    log "✓ Release 已创建（草稿状态，基于 ${TARGET_BRANCH} 的提交 ${TARGET_COMMIT:0:8}）"
     # 重新获取已上传文件信息（应该为空）
     uploaded_files_info=""
 fi
@@ -285,12 +337,12 @@ refresh_uploaded_files() {
 get_sha256_from_manifest() {
     local filename="$1"
     local manifest_file="${RELEASE_DIR}/manifest-${VERSION}.json"
-    
+
     if [ ! -f "$manifest_file" ] || ! command -v jq &> /dev/null; then
         echo ""
         return
     fi
-    
+
     # 尝试从 manifest 中获取 SHA256
     local sha256=$(jq -r --arg f "$filename" '
         .packages.base.sha256 // empty |
@@ -301,7 +353,7 @@ get_sha256_from_manifest() {
             else . end
         else . end
     ' "$manifest_file" 2>/dev/null || echo "")
-    
+
     echo "$sha256"
 }
 
@@ -310,16 +362,16 @@ check_file_uploaded() {
     local file="$1"
     local filename=$(basename "$file")
     local local_size=${file_sizes["$file"]:-0}
-    
+
     # 如果已上传文件信息为空，先刷新
     if [ -z "$uploaded_files_info" ]; then
         refresh_uploaded_files || true
     fi
-    
+
     if [ -z "$uploaded_files_info" ]; then
         return 1  # 未上传
     fi
-    
+
     # 检查文件名和大小是否匹配
     local found=false
     local remote_size=0
@@ -330,20 +382,20 @@ check_file_uploaded() {
             break
         fi
     done <<< "$uploaded_files_info"
-    
+
     if [ "$found" = false ]; then
         return 1  # 文件不存在
     fi
-    
+
     # 大小必须匹配
     if [ "$remote_size" != "$local_size" ]; then
         return 1  # 大小不匹配
     fi
-    
+
     # 如果 manifest.json 中有 SHA256，也进行校验（可选，更严格）
     # 注意：GitHub Releases API 不直接提供 SHA256，所以这里只检查大小
     # 如果需要更严格的校验，可以下载文件后计算 SHA256，但这会增加时间
-    
+
     return 0  # 已上传且大小匹配
 }
 
@@ -383,11 +435,11 @@ for file in "${files_to_upload[@]}"; do
     if [ ! -f "$file" ]; then
         continue
     fi
-    
+
     filename=$(basename "$file")
     file_size=${file_sizes["$file"]:-0}
     file_size_mb=$((file_size / 1024 / 1024))
-    
+
     # 检查是否已上传且完整
     if check_file_uploaded "$file" 2>/dev/null; then
         log "✓ 已上传且完整，跳过: $filename (${file_size_mb}MB)"
@@ -402,13 +454,13 @@ for file in "${files_to_upload[@]}"; do
         fi
         continue
     fi
-    
+
     # 检查文件大小（超过 2GB 的 tar.gz 文件应该已经被分片）
     if [ "$file_size" -gt "$MAX_SIZE" ] && [[ "$filename" == *.tar.gz ]]; then
         log "⚠️  跳过: $filename (${file_size_mb}MB, 超过 2GB 限制，应该使用分片文件)"
         continue
     fi
-    
+
     # 上传文件
     current_upload_num=$((current_upload_num + 1))
     if upload_file_with_progress "$file" "$current_upload_num" "$files_to_upload_count"; then
@@ -460,16 +512,16 @@ else
     missing_count=0
     incomplete_count=0
     uploaded_missing=0
-    
+
     log "检查所有文件的完整性..."
     for file in "${files_to_upload[@]}"; do
         if [ ! -f "$file" ]; then
             continue
         fi
-        
+
         filename=$(basename "$file")
         local_size=${file_sizes["$file"]:-0}
-        
+
         # 检查文件是否已上传
         found=false
         remote_size=0
@@ -480,11 +532,11 @@ else
                 break
             fi
         done <<< "$uploaded_files_info"
-        
+
         if [ "$found" == false ]; then
             log "⚠️  缺失: $filename"
             ((missing_count++))
-            
+
             # 尝试上传缺失的文件
             file_size_mb=$((local_size / 1024 / 1024))
             if [ "$local_size" -gt "$MAX_SIZE" ]; then
@@ -508,7 +560,7 @@ else
             fi
         fi
     done
-    
+
     if [ "$missing_count" -eq 0 ] && [ "$incomplete_count" -eq 0 ]; then
         log "✓ 所有文件已上传且完整"
     elif [ "$uploaded_missing" -gt 0 ]; then
@@ -556,7 +608,7 @@ if [ "$is_draft" == "true" ]; then
         log "发布 Release..."
         # 获取 Release 的 databaseId（REST API 需要数字 ID，不是 GraphQL ID）
         database_id=$(gh api graphql -f query='query($owner: String!, $repo: String!, $tag: String!) { repository(owner: $owner, name: $repo) { release(tagName: $tag) { databaseId } } }' -f owner="${REPO%%/*}" -f repo="${REPO##*/}" -f tag="v${VERSION}" 2>/dev/null | jq -r '.data.repository.release.databaseId' 2>/dev/null)
-        
+
         if [ -z "$database_id" ] || [ "$database_id" == "null" ]; then
             log "⚠️  无法获取 Release databaseId"
             log "请检查权限或稍后手动发布"
@@ -568,7 +620,7 @@ if [ "$is_draft" == "true" ]; then
                 echo "🔗 Release 链接:"
                 echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
                 echo ""
-                
+
                 # 显示 Release 信息
                 log "Release 信息:"
                 gh release view "v${VERSION}" --repo "$REPO" --json name,isDraft,state,url,assets --jq '{
@@ -600,7 +652,7 @@ else
     echo "🔗 Release 链接:"
     echo "  https://github.com/${REPO}/releases/tag/v${VERSION}"
     echo ""
-    
+
     # 显示 Release 信息
     log "Release 信息:"
     gh release view "v${VERSION}" --repo "$REPO" --json name,isDraft,state,url,assets --jq '{

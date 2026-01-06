@@ -1,131 +1,153 @@
-# MATRiX Chunk Packages 使用指南
+# MATRiX Chunk Packages Guide
 
-## 📦 什么是Chunk Packages?
+## 📦 What are Chunk Packages?
 
-MATRiX现在支持模块化打包，将模拟器内容分为：
-- **基础包**: 必需的核心文件和EmptyWorld地图
-- **共享资源包**: 多个地图共享的资源（推荐安装）
-- **地图包**: 各个独立的地图，可按需下载
+MATRiX now supports modular packaging, splitting simulator content into:
+- **Assets Package**: Contains simulator launcher and core binaries (Required).
+- **Base Package**: Essential core files and EmptyWorld map (Required).
+- **Shared Resources Package**: Resources shared across multiple maps (Recommended).
+- **Map Packages**: Individual maps that can be downloaded on demand.
 
-这种设计让用户可以：
-- ✅ 只下载需要的内容，节省存储空间
-- ✅ 快速开始（只需下载基础包）
-- ✅ 按需扩展（需要哪个地图再下载）
+This design allows users to:
+- ✅ Download only what is needed, saving storage space.
+- ✅ Quick start (only Assets and Base Packages required).
+- ✅ Expand on demand (download specific maps as needed).
 
-## 🚀 快速安装
+## 🚀 Quick Installation
 
-### 自动安装（推荐）
+### Automatic Installation (Recommended)
 
 ```bash
 bash scripts/release_manager/install_chunks.sh 0.1.1
 ```
 
-### 手动安装
+### Manual Installation
 
-1. **下载基础包**（必需）
+1. **Prepare Directory**
+
+   Enter `releases` directory in the project root:
    ```bash
-   wget https://github.com/zsibot/matrix/releases/download/v0.1.1/base-0.1.1.tar.gz
+   cd releases
    ```
 
-2. **下载共享资源包**（推荐）
+2. **Download Packages to releases Directory**
+
+   - **Download Assets Package** (Required)
+     ```bash
+     wget https://github.com/zsibot/matrix/releases/download/v0.1.1/assets-0.1.1.tar.gz
+     ```
+
+   - **Download Base Package** (Required)
+     ```bash
+     wget https://github.com/zsibot/matrix/releases/download/v0.1.1/base-0.1.1.tar.gz
+     ```
+
+   - **Download Shared Resources Package** (Recommended)
+     ```bash
+     wget https://github.com/zsibot/matrix/releases/download/v0.1.1/shared-0.1.1.tar.gz
+     ```
+
+   - **Download Map Packages** (On Demand)
+     ```bash
+     wget https://github.com/zsibot/matrix/releases/download/v0.1.1/SceneWorld-0.1.1.tar.gz
+     ```
+
+3. **Run Local Installation Script**
+
+   Return to the project root and run the installation script:
    ```bash
-   wget https://github.com/zsibot/matrix/releases/download/v0.1.1/shared-0.1.1.tar.gz
+   cd ..
+   bash scripts/release_manager/install_chunks_local.sh 0.1.1
    ```
 
-3. **下载地图包**（按需）
-   ```bash
-   wget https://github.com/zsibot/matrix/releases/download/v0.1.1/SceneWorld-0.1.1.tar.gz
-   ```
+## 📋 Package Description
 
-4. **解压到运行目录**
-   ```bash
-   cd src/UeSim/Linux/jszr_mujoco_ue
-   tar -xzf ../../../../base-0.1.1.tar.gz
-   cd Content/Paks
-   tar -xzf ../../../../shared-0.1.1.tar.gz
-   tar -xzf ../../../../SceneWorld-0.1.1.tar.gz
-   ```
+### Assets Package (assets-0.1.1.tar.gz) - Required
+- **Contents**:
+  - `bin/sim_launcher`: Simulator launcher
+  - Core binary dependencies
+- **Required**: ✅ Yes
 
-## 📋 包说明
-
-### 基础包 (base-0.1.1.tar.gz) - 必需
-- **大小**: ~950MB
-- **内容**: 
-  - EmptyWorld地图
-  - 核心蓝图和系统文件
+### Base Package (base-0.1.1.tar.gz) - Required
+- **Size**: ~950MB
+- **Contents**:
+  - EmptyWorld Map
+  - Core Blueprints and System Files
   - Chunk 0 (pakchunk0)
-- **必需**: ✅ 是
+- **Required**: ✅ Yes
 
-### 共享资源包 (shared-0.1.1.tar.gz) - 推荐
-- **大小**: ~3.2GB
-- **内容**: 
-  - Fab/Carla共享资源
-  - 多个地图共享的蓝图和资源
+### Shared Resources Package (shared-0.1.1.tar.gz) - Recommended
+- **Size**: ~3.2GB
+- **Contents**:
+  - Fab/Carla Shared Resources
+  - Blueprints and Resources shared by multiple maps
   - Chunk 1 (pakchunk1)
-- **必需**: ⚠️ 否，但多个地图依赖，强烈建议安装
+- **Required**: ⚠️ No, but many maps depend on it. Strongly recommended.
 
-### 地图包 - 可选
+### Map Packages - Optional
 
-| 地图包 | 大小 | Chunk ID | 说明 |
-|--------|------|----------|------|
-| SceneWorld | ~423MB | 11 | 仓库场景 |
-| Town10World | ~1.1GB | 12 | 城镇场景（大） |
-| YardWorld | ~695MB | 13 | 庭院场景 |
-| CrowdWorld | ~60MB | 14 | 人群场景 |
-| VeniceWorld | ~328MB | 15 | 威尼斯场景 |
-| RunningWorld | ~36MB | 16 | 跑步场景 |
-| HouseWorld | ~265MB | 17 | 房屋场景 |
-| IROSFlatWorld | ~300KB | 18 | IROS平地场景 |
-| IROSSlopedWorld | ~250MB | 19 | IROS斜坡场景 |
-| Town10Zombie | ~628MB | 20 | 僵尸场景（大） |
-| IROSFlatWorld2025 | ~148KB | 21 | IROS 2025平地场景 |
-| IROSSloppedWorld2025 | ~149KB | 22 | IROS 2025斜坡场景 |
-| OfficeWorld | ~418MB | 23 | 办公室场景 |
-| CustomWorld | ~22MB | 24 | 自定义场景 |
-| 3DGSWorld | ~206MB | 25 | 3D高斯地图 |
-| MoonWorld | ~603MB | 26 | 月球环境 |
+| Package Name | Size | Chunk ID | Description |
+|--------------|------|----------|-------------|
+| SceneWorld | ~423MB | 11 | Warehouse Scene |
+| Town10World | ~1.1GB | 12 | Large Town Scene |
+| YardWorld | ~695MB | 13 | Courtyard Scene |
+| CrowdWorld | ~60MB | 14 | Crowd Scene |
+| VeniceWorld | ~328MB | 15 | Venice Scene |
+| RunningWorld | ~36MB | 16 | Running Game Scene |
+| HouseWorld | ~265MB | 17 | House Scene |
+| IROSFlatWorld | ~300KB | 18 | IROS Flat Terrain |
+| IROSSlopedWorld | ~250MB | 19 | IROS Sloped Terrain |
+| Town10Zombie | ~628MB | 20 | Zombie Scene (Large) |
+| IROSFlatWorld2025 | ~148KB | 21 | IROS 2025 Flat Terrain |
+| IROSSloppedWorld2025 | ~149KB | 22 | IROS 2025 Sloped Terrain |
+| OfficeWorld | ~418MB | 23 | Office Scene |
+| CustomWorld | ~22MB | 24 | Custom Scene |
+| 3DGSWorld | ~206MB | 25 | 3D Gaussian Splatting Map |
+| MoonWorld | ~603MB | 26 | Moon Environment |
 
-## 🔍 验证安装
+## 🔍 Verify Installation
 
-安装后检查：
+After installation, check:
 
 ```bash
-cd src/UeSim/Linux/jszr_mujoco_ue/Content/Paks
+# 1. Check Assets (Should exist and >1MB)
+ls -lh bin/sim_launcher
+
+# 2. Check PAK files
+cd src/UeSim/Linux/zsibot_mujoco_ue/Content/Paks
 ls -lh pakchunk*.pak
 ```
 
-应该看到：
-- `pakchunk0-Linux.pak` - 基础包（必需）
-- `pakchunk1-Linux.pak` - 共享资源包（如果已安装）
-- `pakchunk11-Linux.pak` 等 - 地图包（如果已安装）
+You should see:
+- `pakchunk0-Linux.pak` - Base Package (Required)
+- `pakchunk1-Linux.pak` - Shared Resources Package (if installed)
+- `pakchunk11-Linux.pak` etc. - Map Packages (if installed)
 
-## 🎮 使用
+## 🎮 Usage
 
-安装完成后，运行模拟器：
+After installation, run the simulator:
 
 ```bash
-# 已在 matrix 根目录
-./scripts/run_sim.sh 1 0  # XGB机器人，CustomWorld地图
-./scripts/run_sim.sh 1 1  # XGB机器人，Warehouse地图（需要SceneWorld地图包）
+# In matrix root directory
+./scripts/run_sim.sh 1 0  # XGB Robot, CustomWorld Map
+./scripts/run_sim.sh 1 1  # XGB Robot, Warehouse Map (Requires SceneWorld package)
 ```
 
-> **注意：** EmptyWorld 是默认地图，包含在基础包中，通过 `DefaultEngine.ini` 配置。它不通过地图 ID 运行，而是作为引擎的默认启动地图。如需运行 EmptyWorld，直接启动模拟器即可，无需指定地图 ID。
+## ❓ FAQ
 
-## ❓ 常见问题
+**Q: I only want to run EmptyWorld. Which packages do I need?**
+A: You need the Assets Package (assets) and the Base Package (base).
 
-**Q: 我只想运行EmptyWorld，需要下载哪些包？**  
-A: 只需要基础包（base包）即可。
+**Q: Why is the Shared Resources Package recommended?**
+A: Because many maps depend on assets in the Shared Resources Package. Without it, those maps may not load correctly.
 
-**Q: 为什么共享资源包是推荐的？**  
-A: 因为多个地图都依赖共享资源包中的资源，如果不安装，这些地图可能无法正常加载。
+**Q: Can I download only specific map packages?**
+A: Yes! You can download only the map packages you need.
 
-**Q: 我可以只下载部分地图包吗？**  
-A: 可以！你可以根据需要只下载要使用的地图包。
+**Q: How do I update to a new version?**
+A: Download the new version packages and extract them, overwriting the old files. It is recommended to backup first.
 
-**Q: 如何更新到新版本？**  
-A: 下载新版本的包，解压覆盖旧文件即可。建议先备份。
+## 📚 More Information
 
-## 📚 更多信息
-
-- [主 README](../README.md) - 项目主文档
-- [中文文档](README_CN.md) - 中文使用指南
+- [Main README](../README.md) - Project Main Documentation
+- [Chinese Documentation](README_CN.md) - User Guide in Chinese

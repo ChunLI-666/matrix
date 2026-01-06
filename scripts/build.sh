@@ -12,7 +12,6 @@ bash "$SCRIPT_DIR/install_deps.sh"
 # mc modify config and compile
 # bash "$SCRIPT_DIR/modify_config.sh"
 # bash "$SCRIPT_DIR/build_mc.sh"
-# bash "$SCRIPT_DIR/build_mujoco_sdk.sh"
 # bash "$SCRIPT_DIR/build_navigo.sh"
 
 echo "Initialization complete."
