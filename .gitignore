@@ -16,12 +16,12 @@ releases/chunks/
 
 # UeSim content (filled by downloading releases)
 # Keep directory structure but ignore content
-src/UeSim/Linux/jszr_mujoco_ue/Content/Paks/*
-src/UeSim/Linux/jszr_mujoco_ue/Content/model/*
-src/UeSim/Linux/jszr_mujoco_ue/Binaries/*
-!src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/
-!src/UeSim/Linux/jszr_mujoco_ue/Binaries/Linux/jszr_mujoco_ue-Linux-Shipping
-!src/UeSim/Linux/jszr_mujoco_ue/.gitkeep
+src/UeSim/Linux/zsibot_mujoco_ue/Content/Paks/*
+src/UeSim/Linux/zsibot_mujoco_ue/Content/model/*
+src/UeSim/Linux/zsibot_mujoco_ue/Binaries/*
+!src/UeSim/Linux/zsibot_mujoco_ue/Binaries/Linux/
+!src/UeSim/Linux/zsibot_mujoco_ue/Binaries/Linux/zsibot_mujoco_ue-Linux-Shipping
+!src/UeSim/Linux/zsibot_mujoco_ue/.gitkeep
 
 # Build artifacts
 *.log
