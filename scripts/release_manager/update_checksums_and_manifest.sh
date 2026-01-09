@@ -152,44 +152,20 @@ cat > "manifest-${VERSION}.json" << EOF
     "shared": {
       "file": "shared-${VERSION}.tar.gz",
       "required": false,
-      "description": "共享资源包 (Chunk 1) - 包含Fab/Warehouse和StarterContent共享资源",
+      "description": "共享资源包 (Chunk 1) - 包含多个地图用到的共享资源",
       "size": ${SHARED_SIZE},
       "sha256": "${SHARED_SHA256}"
 EOF
 
 if [ "$SHARED_IS_SPLIT" = "true" ]; then
     SHARED_PARTS=$(get_parts "shared-${VERSION}")
-    if [ -f "shared-${VERSION}.tar.merge.sh" ]; then
-        SHARED_MERGE_SCRIPT="shared-${VERSION}.tar.merge.sh"
-    elif [ -f "shared-${VERSION}.merge.sh" ]; then
-        SHARED_MERGE_SCRIPT="shared-${VERSION}.merge.sh"
-    else
-        SHARED_MERGE_SCRIPT=""
-    fi
-    if [ -f "shared-${VERSION}.tar.sha256" ]; then
-        SHARED_CHECKSUM_FILE="shared-${VERSION}.tar.sha256"
-    elif [ -f "shared-${VERSION}.sha256" ]; then
-        SHARED_CHECKSUM_FILE="shared-${VERSION}.sha256"
-    else
-        SHARED_CHECKSUM_FILE=""
-    fi
+    sed -i '$ s/"$/",/' "manifest-${VERSION}.json"
     cat >> "manifest-${VERSION}.json" << EOF
-,
+      "merge_script": "shared-${VERSION}.tar.merge.sh",
+      "checksum_file": "shared-${VERSION}.tar.sha256",
       "is_split": true,
       "parts": ${SHARED_PARTS}
 EOF
-    if [ -n "$SHARED_MERGE_SCRIPT" ]; then
-        cat >> "manifest-${VERSION}.json" << EOF
-,
-      "merge_script": "${SHARED_MERGE_SCRIPT}"
-EOF
-    fi
-    if [ -n "$SHARED_CHECKSUM_FILE" ]; then
-        cat >> "manifest-${VERSION}.json" << EOF
-,
-      "checksum_file": "${SHARED_CHECKSUM_FILE}"
-EOF
-    fi
 fi
 
 # 添加 assets 包（如果存在）
@@ -229,7 +205,7 @@ for map_tar in *-${VERSION}.tar.gz; do
         if [ "$first" = true ]; then
             first=false
         else
-            echo "," >> "manifest-${VERSION}.json"
+            sed -i '$ s/}$/},/' "manifest-${VERSION}.json"
         fi
         
         cat >> "manifest-${VERSION}.json" << EOF
@@ -258,23 +234,23 @@ EOF
             else
                 map_checksum_file=""
             fi
+            
+            # Collect optional fields
+            MAP_EXTRAS=""
+            if [ -n "$map_merge_script" ]; then
+                if [ -n "$MAP_EXTRAS" ]; then MAP_EXTRAS="$MAP_EXTRAS,"; fi
+                MAP_EXTRAS="${MAP_EXTRAS}\n        "merge_script": "${map_merge_script}""
+            fi
+            if [ -n "$map_checksum_file" ]; then
+                if [ -n "$MAP_EXTRAS" ]; then MAP_EXTRAS="$MAP_EXTRAS,"; fi
+                MAP_EXTRAS="${MAP_EXTRAS}\n        "checksum_file": "${map_checksum_file}""
+            fi
+            
             cat >> "manifest-${VERSION}.json" << EOF
 ,
         "is_split": true,
-        "parts": ${map_parts}
+        "parts": ${map_parts}${MAP_EXTRAS}
 EOF
-            if [ -n "$map_merge_script" ]; then
-                cat >> "manifest-${VERSION}.json" << EOF
-,
-        "merge_script": "${map_merge_script}"
-EOF
-            fi
-            if [ -n "$map_checksum_file" ]; then
-                cat >> "manifest-${VERSION}.json" << EOF
-,
-        "checksum_file": "${map_checksum_file}"
-EOF
-            fi
         fi
         
         cat >> "manifest-${VERSION}.json" << EOF

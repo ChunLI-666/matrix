@@ -41,7 +41,7 @@ log_section "[1] 安装资源文件包 (必需)"
             # 资源文件包解压到项目根目录，保持目录结构
             if extract_tar "$ASSETS_FILE" "${PROJECT_ROOT}"; then
                 log "✓ 资源文件包安装完成"
-                
+
                 # 验证关键文件是否存在
                 if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
                     launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
@@ -69,18 +69,18 @@ log_section "[2] 安装基础包 (必需)"
     if [ ! -f "$BASE_FILE" ]; then
         error_exit "找不到基础包: $BASE_FILE (请先下载到 releases/ 目录)"
     fi
-    
+
     # 使用公共函数解压
     if extract_tar "$BASE_FILE" "$TARGET_DIR"; then
         # 使用公共函数移动 chunk 文件
         move_chunk_files_to_paks "${TARGET_DIR}/Content/Paks" "$PAK_DIR"
-        
+
         # 从 UeSim 目录拷贝模型到 robot_mujoco 目录
         copy_models_from_uesim_to_robot_mujoco
     else
         error_exit "基础包解压失败"
     fi
-    
+
     log "✓ 基础包安装完成"
 }
 
@@ -126,7 +126,7 @@ log_section "[4] 安装地图包 (可选)"
     map_list=()
     total_maps=$(ls -1 "${RELEASE_DIR}"/*-${VERSION}.tar.gz 2>/dev/null | grep -vE "(base|shared)-" | wc -l)
     current_map=0
-    
+
     for map_tar in "${RELEASE_DIR}"/*-${VERSION}.tar.gz; do
         # 跳过 base、shared 和 assets
         if [[ "$(basename "$map_tar")" == base-* ]] || [[ "$(basename "$map_tar")" == shared-* ]] || [[ "$(basename "$map_tar")" == assets-* ]]; then
@@ -137,7 +137,7 @@ log_section "[4] 安装地图包 (可选)"
             ((++current_map))
             map_size=$(du -h "$map_tar" 2>/dev/null | cut -f1)
             log "安装地图包 [${current_map}/${total_maps}]: $map_name (${map_size})"
-            
+
             # 使用 pv 显示进度（如果可用），否则使用 tar -v 显示解压的文件名
             if command -v pv &> /dev/null; then
                 log "  正在解压..."
@@ -158,7 +158,7 @@ log_section "[4] 安装地图包 (可选)"
                     done
                 ) &
                 progress_pid=$!
-                
+
                 # 执行解压
                 if tar -xzf "$map_tar" -C "$PAK_DIR" 2>/dev/null; then
                     kill $progress_pid 2>/dev/null || true
@@ -187,7 +187,7 @@ log_section "[5] 验证安装"
 {
     # 使用公共函数验证安装
     verify_installation "$PAK_DIR"
-    
+
     # 验证资源文件是否已安装
     if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
         launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
@@ -218,14 +218,14 @@ log_section "[6] 完成"
     echo "运行目录: ${TARGET_DIR}"
     echo ""
     echo "已安装的地图包列表:"
-    
+
     for pak_file in "${PAK_DIR}"/pakchunk[1-9][0-9]*-Linux.pak; do
         if [ -f "$pak_file" ]; then
             chunk_id=$(basename "$pak_file" | sed 's/pakchunk\([0-9]*\)-Linux.pak/\1/')
-            
+
             # 首先使用公共函数获取地图名
             map_name=$(get_map_name_by_chunk_id "$chunk_id")
-            
+
             # 如果公共函数返回未知地图，尝试通过 manifest 文件查找 (如果存在 jq)
             if [ "$map_name" == "(未知地图)" ] && command -v jq &> /dev/null && [ -f "${RELEASE_DIR}/manifest-${VERSION}.json" ]; then
                 # 从 manifest 中查找对应的地图名（通过文件名匹配）
@@ -247,7 +247,7 @@ log_section "[6] 完成"
                     done
                 fi
             fi
-            
+
             if [ -z "$map_name" ] || [ "$map_name" == "null" ]; then
                 map_name="(未知地图)"
             fi
@@ -262,8 +262,8 @@ log_section "[6] 完成"
     echo ""
     echo "现在可以运行模拟器了:"
     echo "  cd ${PROJECT_ROOT}"
-    echo "  ./scripts/run_sim.sh 1 0  # XGB机器人，CustomWorld地图"
-    echo "  ./scripts/run_sim.sh 1 1  # XGB机器人，Warehouse地图"
+    echo "  ./bin/sim_launcher 1 0  # XGB机器人，CustomWorld地图"
+    echo "  ./bin/sim_launcher 1 1  # XGB机器人，Warehouse地图"
     echo ""
     echo "提示: 如果需要安装更多地图包，可以:"
     echo "  1. 将地图包文件放到 releases/ 目录"

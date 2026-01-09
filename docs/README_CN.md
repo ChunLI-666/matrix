@@ -17,6 +17,15 @@
 
 MATRiX 是一个集成了 **MuJoCo**、**Unreal Engine 5** 和 **CARLA** 的高级仿真平台，提供用于四足机器人研究的高保真、交互式环境。其软件在环（software-in-the-loop）架构支持真实物理仿真、沉浸式视觉效果，并优化了仿真到现实的迁移（sim-to-real）以便机器人开发与部署。
 
+## 💬 交流社区
+
+**加入我们的微信群,参与 MATRiX 仿真交流:**
+
+<div align="center">
+  <img src="../demo_gif/Wechat.png" alt="微信群二维码" width="300"/>
+  <p><em>扫码加入 MATRiX 仿真交流群</em></p>
+</div>
+
 ---
 
 ## 📂 目录结构

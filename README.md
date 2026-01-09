@@ -17,6 +17,15 @@
 
 MATRiX is an advanced simulation platform that integrates **MuJoCo**, **Unreal Engine 5**, and **CARLA** to provide high-fidelity, interactive environments for quadruped robot research. Its software-in-the-loop architecture enables realistic physics, immersive visuals, and optimized sim-to-real transfer for robotics development and deployment.
 
+## 💬 Community
+
+**Join our WeChat group for MATRiX simulation discussions:**
+
+<div align="center">
+  <img src="demo_gif/Wechat.png" alt="WeChat Group QR Code" width="300"/>
+  <p><em>Scan to join MATRiX simulation community</em></p>
+</div>
+
 ---
 
 ## 📂 Directory Structure
