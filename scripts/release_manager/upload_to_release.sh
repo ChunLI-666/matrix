@@ -17,6 +17,12 @@ REPO="zsibot/matrix"
 RELEASE_DIR="releases"
 MAX_SIZE=2147483648  # 2GB in bytes (GitHub Releases limit)
 
+agent_log() {
+    if [ -n "${log_file:-}" ]; then
+        echo "$1" >> "$log_file"
+    fi
+}
+
 # 函数：显示上传进度
 show_upload_progress() {
     local current=$1
@@ -57,7 +63,7 @@ upload_file_with_progress() {
 
     # #region agent log
     local upload_cmd="gh release upload \"v${VERSION}\" \"$file\" --repo \"$REPO\" --clobber"
-    echo "{\"id\":\"log_$(date +%s)_upload_cmd\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:58\",\"message\":\"Upload command\",\"data\":{\"filename\":\"$filename\",\"command\":\"$upload_cmd\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}" >> "$log_file"
+    agent_log "{\"id\":\"log_$(date +%s)_upload_cmd\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:58\",\"message\":\"Upload command\",\"data\":{\"filename\":\"$filename\",\"command\":\"$upload_cmd\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}"
     # #endregion
 
     if gh release upload "v${VERSION}" "$file" --repo "$REPO" --clobber > "$temp_output" 2>&1; then
@@ -66,7 +72,7 @@ upload_file_with_progress() {
         local speed_mb=$(echo "scale=2; $file_size_mb / $duration" | bc 2>/dev/null || echo "0")
 
         # #region agent log
-        echo "{\"id\":\"log_$(date +%s)_upload_success\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:80\",\"message\":\"Upload success\",\"data\":{\"filename\":\"$filename\",\"duration\":$duration,\"speed_mb\":$speed_mb},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}" >> "$log_file"
+        agent_log "{\"id\":\"log_$(date +%s)_upload_success\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:80\",\"message\":\"Upload success\",\"data\":{\"filename\":\"$filename\",\"duration\":$duration,\"speed_mb\":$speed_mb},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}"
         # #endregion
 
         printf "\r[完成] ✓ %s (%dMB, 耗时: %ds, 速度: %.2fMB/s)\n" "$filename" "$file_size_mb" "$duration" "$speed_mb"
@@ -75,7 +81,7 @@ upload_file_with_progress() {
     else
         # #region agent log
         local error_output=$(cat "$temp_output" 2>/dev/null || echo "")
-        echo "{\"id\":\"log_$(date +%s)_upload_failure\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:92\",\"message\":\"Upload command failed\",\"data\":{\"filename\":\"$filename\",\"error_output\":\"$error_output\",\"file_size\":$file_size,\"actual_size\":$actual_size},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}" >> "$log_file"
+        agent_log "{\"id\":\"log_$(date +%s)_upload_failure\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:92\",\"message\":\"Upload command failed\",\"data\":{\"filename\":\"$filename\",\"error_output\":\"$error_output\",\"file_size\":$file_size,\"actual_size\":${actual_size:-0}},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"ALL\"}"
         # #endregion
 
         # 检查文件是否实际上传成功（可能是GitHub API的临时错误，但文件实际上传了）
@@ -83,7 +89,7 @@ upload_file_with_progress() {
         if [ -n "$uploaded_asset" ] && [ "$uploaded_asset" != "null" ]; then
             local uploaded_size=$(echo "$uploaded_asset" | jq -r '.size' 2>/dev/null || echo "0")
             # #region agent log
-            echo "{\"id\":\"log_$(date +%s)_upload_verify\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:96\",\"message\":\"File actually uploaded despite error\",\"data\":{\"filename\":\"$filename\",\"uploaded_size\":$uploaded_size,\"expected_size\":$file_size},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}" >> "$log_file"
+            agent_log "{\"id\":\"log_$(date +%s)_upload_verify\",\"timestamp\":$(date +%s)000,\"location\":\"upload_to_release.sh:96\",\"message\":\"File actually uploaded despite error\",\"data\":{\"filename\":\"$filename\",\"uploaded_size\":$uploaded_size,\"expected_size\":$file_size},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}"
             # #endregion
 
             # 检查大小是否匹配（允许1MB的误差）
@@ -560,7 +566,7 @@ else
             fi
         fi
     done
-
+    
     if [ "$missing_count" -eq 0 ] && [ "$incomplete_count" -eq 0 ]; then
         log "✓ 所有文件已上传且完整"
     elif [ "$uploaded_missing" -gt 0 ]; then

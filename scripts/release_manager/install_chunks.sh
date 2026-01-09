@@ -23,10 +23,10 @@ check_and_install_download_tools() {
     if command -v aria2c &> /dev/null || command -v axel &> /dev/null; then
         return 0
     fi
-    
+
     # 如果没有多线程工具，尝试安装 aria2
     log "未找到多线程下载工具（aria2/axel），尝试安装 aria2 以提升下载速度..."
-    
+
     # 检查是否有 sudo 权限（无需密码）
     if command -v sudo &> /dev/null && sudo -n true 2>/dev/null; then
         # 有 sudo 权限且无需密码，直接安装
@@ -59,7 +59,7 @@ check_and_install_download_tools() {
             log "跳过 aria2 安装，将使用 wget/curl（下载速度可能较慢）"
         fi
     fi
-    
+
     return 1
 }
 
@@ -84,17 +84,28 @@ normalize_proxy_for_aria2() {
         echo ""
         return
     fi
-    
+
     # aria2c 支持 http://, https://, socks5:// 格式
     # 如果已经是完整格式，直接返回
-    if [[ "$proxy" =~ ^(http|https|socks5):// ]]; then
-        echo "$proxy"
-    elif [[ "$proxy" =~ ^socks5h?:// ]]; then
-        # socks5h 转换为 socks5
-        echo "${proxy/socks5h/socks5}"
+    if [[ "$proxy" =~ ^(http|https):// ]]; then
+        # 确保去除任何前后空格和中间空格 (aria2c 对格式非常敏感)
+        echo "${proxy// /}"
+    elif [[ "$proxy" =~ ^socks5:// ]] || [[ "$proxy" =~ ^socks5h:// ]]; then
+        # 尝试将 socks5 代理转换为 http 代理
+
+        # 提取主机和端口
+        local host_port=$(echo "$proxy" | sed -E 's|^.*://||')
+        # 去除空格
+        host_port="${host_port// /}"
+
+        # 构造 http 代理地址 (确保是干净的 http:// 地址)
+        echo "http://${host_port}"
     else
         # 假设是 http 代理
-        echo "http://${proxy#http://}"
+        local host_port=$(echo "${proxy}" | sed -E 's|^http://||')
+        # 去除空格
+        host_port="${host_port// /}"
+        echo "http://${host_port}"
     fi
 }
 
@@ -103,11 +114,11 @@ verify_file_integrity() {
     local file="$1"
     local expected_size="$2"  # 可选：manifest 中的期望大小
     local expected_sha256="$3"  # 可选：manifest 中的期望 SHA256
-    
+
     if [ ! -f "$file" ]; then
         return 1
     fi
-    
+
     # 验证文件大小
     if [ -n "$expected_size" ] && [ "$expected_size" != "0" ] && [ "$expected_size" != "null" ]; then
         local actual_size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0)
@@ -116,7 +127,7 @@ verify_file_integrity() {
             return 1
         fi
     fi
-    
+
     # 验证 SHA256
     if [ -n "$expected_sha256" ] && [ "$expected_sha256" != "null" ]; then
         local actual_sha256=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
@@ -128,7 +139,7 @@ verify_file_integrity() {
         fi
         log "✓ SHA256 校验通过: $(basename "$file")"
     fi
-    
+
     return 0
 }
 
@@ -140,13 +151,13 @@ download_and_extract_stream() {
     local package_name=$3
     local expected_size="${4:-}"  # 可选：manifest 中的期望大小
     local expected_sha256="${5:-}"  # 可选：manifest 中的期望 SHA256
-    
+
     log "下载并解压: $package_name"
     mkdir -p "$extract_dir"
-    
+
     # 确定最终文件名
     local final_file="${DOWNLOAD_DIR}/$(basename "$url" | sed 's/?.*$//')"
-    
+
     # 如果文件已存在，验证完整性
     if [ -f "$final_file" ]; then
         if verify_file_integrity "$final_file" "$expected_size" "$expected_sha256"; then
@@ -162,94 +173,119 @@ download_and_extract_stream() {
             rm -f "$final_file"
         fi
     fi
-    
+
     # 获取代理设置
-    local proxy=$(get_proxy)
-    local proxy_args=""
+    local proxy
+    proxy="$(get_proxy)"
+    proxy="$(echo "$proxy" | tr -d '[:space:]')"
+    local http_proxy_url=""
     if [ -n "$proxy" ]; then
-        if [[ "$proxy" =~ ^socks5:// ]]; then
-            # wget 的 SOCKS5 代理格式
-            proxy_args="--proxy=on --proxy-type=socks5 --proxy=${proxy#socks5://}"
+        if [[ "$proxy" =~ ^socks[0-9a-z]*$ ]]; then
+            log "⚠️  代理配置格式异常，忽略代理: $proxy"
+        elif [[ "$proxy" =~ ^https?:// ]]; then
+            http_proxy_url="$proxy"
+        elif [[ "$proxy" =~ ^socks5:// ]] || [[ "$proxy" =~ ^socks5h:// ]]; then
+            local host_port
+            host_port="$(echo "$proxy" | sed -E 's|^.*://||')"
+            host_port="$(echo "$host_port" | tr -d '[:space:]')"
+            if [ -n "$host_port" ]; then
+                http_proxy_url="http://${host_port}"
+                log "⚠️  检测到 SOCKS5 代理，按 HTTP 代理使用: $http_proxy_url"
+            else
+                log "⚠️  代理配置格式异常，忽略代理: $proxy"
+            fi
         else
-            proxy_args="--proxy=on --proxy=${proxy}"
+            http_proxy_url="http://${proxy}"
         fi
     fi
-    
+
     # 临时禁用 set -e
     set +e
-    
+
     local download_exit=1
-    
-    # 优先使用多线程下载工具
-    # 检查是否应该跳过 aria2c（SOCKS5 代理）
+
     local skip_aria2=false
-    if [ -n "$proxy" ] && [[ "$proxy" =~ ^socks5 ]]; then
+    if [ "${SKIP_ARIA2:-0}" = "1" ]; then
         skip_aria2=true
     fi
-    
+
     if command -v aria2c &> /dev/null && [ "$skip_aria2" = false ]; then
         log "使用 aria2c 多线程下载..."
-        local aria2_args=(-x 16 -s 16 --max-tries=3 --retry-wait=2 --continue=true)
-        if [ -n "$proxy" ] && [[ "$proxy" =~ ^(http|https):// ]]; then
-            # 对于 HTTP/HTTPS 代理，使用环境变量方式
-            export ALL_PROXY="$proxy"
-            export all_proxy="$proxy"
+        local aria2_args=(-x 16 -s 16 --max-tries=3 --retry-wait=2 --continue=true --show-console-readout=true --summary-interval=0 --console-log-level=warn)
+        if [ -n "$http_proxy_url" ]; then
+            aria2_args+=(--all-proxy="$http_proxy_url")
         fi
-        aria2c "${aria2_args[@]}" -d "$DOWNLOAD_DIR" -o "$(basename "$final_file")" "$url"
+        (
+            unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+            aria2c "${aria2_args[@]}" -d "$DOWNLOAD_DIR" -o "$(basename "$final_file")" "$url"
+        )
         download_exit=$?
-        unset ALL_PROXY all_proxy 2>/dev/null || true
         if [ $download_exit -eq 0 ]; then
             mv "${DOWNLOAD_DIR}/$(basename "$final_file")" "$final_file" 2>/dev/null || true
         fi
     elif [ "$skip_aria2" = true ]; then
-        log "  ⚠️  aria2c 对 SOCKS5 代理支持不佳，改用 wget/curl..."
+        if [ "${SKIP_ARIA2:-0}" = "1" ]; then
+            log "  ⚠️  已通过环境变量 SKIP_ARIA2=1 禁用 aria2c，改用其他工具..."
+        else
+            log "  ⚠️  跳过 aria2c，改用其他工具..."
+        fi
         download_exit=1  # 标记为失败，继续尝试其他工具
     fi
-    
+
     # 如果 aria2c 失败或跳过，尝试其他工具
     if [ $download_exit -ne 0 ]; then
-        # 对于 SOCKS5 代理，优先使用 curl（原生支持）
-        if [ -n "$proxy" ] && [[ "$proxy" =~ ^socks5 ]] && command -v curl &> /dev/null; then
-            log "使用 curl 下载（原生支持 SOCKS5 代理）..."
-            local curl_args=(-L --progress-bar -C - --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 3600 --ssl-no-revoke --proxy "$proxy")
-            curl "${curl_args[@]}" -o "$final_file" "$url"
-            download_exit=$?
-        elif command -v axel &> /dev/null; then
+        if command -v axel &> /dev/null; then
             log "使用 axel 多线程下载..."
+
             local axel_args=(-n 16 -a)
-            if [ -n "$proxy" ]; then
-                axel_args+=("--proxy=${proxy}")
+            if [ -n "$http_proxy_url" ]; then
+                axel_args+=("--proxy=${http_proxy_url}")
             fi
-            axel "${axel_args[@]}" -o "$final_file" "$url"
+            (
+                unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+                axel "${axel_args[@]}" -o "$final_file" "$url"
+            )
             download_exit=$?
         elif command -v wget &> /dev/null; then
             log "使用 wget 下载（支持断点续传）..."
-            local wget_args=(--continue --show-progress --timeout=30 --tries=3)
-            if [ -n "$proxy" ]; then
+
+            local wget_args=(--continue --no-verbose --show-progress --progress=bar:force --timeout=30 --tries=3)
+            if [ -n "$http_proxy_url" ]; then
                 wget_args+=(--proxy=on)
-                export http_proxy="$proxy"
-                export https_proxy="$proxy"
+            else
+                wget_args+=(--no-proxy)
             fi
-            wget "${wget_args[@]}" -O "$final_file" "$url"
+            (
+                unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+                if [ -n "$http_proxy_url" ]; then
+                    export http_proxy="$http_proxy_url"
+                    export https_proxy="$http_proxy_url"
+                    export HTTP_PROXY="$http_proxy_url"
+                    export HTTPS_PROXY="$http_proxy_url"
+                fi
+                wget "${wget_args[@]}" -O "$final_file" "$url"
+            )
             download_exit=$?
-            unset http_proxy https_proxy 2>/dev/null || true
         elif command -v curl &> /dev/null; then
             log "使用 curl 下载（支持断点续传）..."
             local curl_args=(-L --progress-bar -C - --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 3600 --ssl-no-revoke)
-            if [ -n "$proxy" ]; then
-                curl_args+=(--proxy "$proxy")
+            if [ -n "$http_proxy_url" ]; then
+                curl_args+=(--proxy "$http_proxy_url")
             fi
-            curl "${curl_args[@]}" -o "$final_file" "$url"
+            (
+                unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+                curl "${curl_args[@]}" -o "$final_file" "$url"
+            )
             download_exit=$?
         else
             log "ERROR: 未找到可用的下载工具"
             return 1
         fi
     fi
-    
+
     # 重新启用 set -e
     set -e
-    
+
     # 检查下载是否成功
     if [ $download_exit -ne 0 ]; then
         log "⚠️  下载失败 (退出码: $download_exit)"
@@ -261,14 +297,14 @@ download_and_extract_stream() {
         fi
         return 1
     fi
-    
+
     # 验证文件完整性（大小和 SHA256）
     if ! verify_file_integrity "$final_file" "$expected_size" "$expected_sha256"; then
         log "⚠️  文件完整性验证失败，删除损坏的文件..."
         rm -f "$final_file"
         return 1
     fi
-    
+
     # 解压文件
     log "解压: $package_name"
     if tar -xzf "$final_file" -C "$extract_dir" 2>/dev/null; then
@@ -284,74 +320,100 @@ download_file() {
     local url=$1
     local output=$2
     log "下载: $(basename "$output")"
-    
+
     # 获取代理设置
-    local proxy=$(get_proxy)
-    
+    local proxy
+    proxy="$(get_proxy)"
+    proxy="$(echo "$proxy" | tr -d '[:space:]')"
+    local http_proxy_url=""
+    if [ -n "$proxy" ]; then
+        if [[ "$proxy" =~ ^socks[0-9a-z]*$ ]]; then
+            log "⚠️  代理配置格式异常，忽略代理: $proxy"
+        elif [[ "$proxy" =~ ^https?:// ]]; then
+            http_proxy_url="$proxy"
+        elif [[ "$proxy" =~ ^socks5:// ]] || [[ "$proxy" =~ ^socks5h:// ]]; then
+            local host_port
+            host_port="$(echo "$proxy" | sed -E 's|^.*://||')"
+            host_port="$(echo "$host_port" | tr -d '[:space:]')"
+            if [ -n "$host_port" ]; then
+                http_proxy_url="http://${host_port}"
+                log "⚠️  检测到 SOCKS5 代理，按 HTTP 代理使用: $http_proxy_url"
+            else
+                log "⚠️  代理配置格式异常，忽略代理: $proxy"
+            fi
+        else
+            http_proxy_url="http://${proxy}"
+        fi
+    fi
+
     # 临时禁用 set -e
     set +e
-    
+
     local download_exit=1
-    
-    # 优先使用多线程下载工具
-    # 检查是否应该跳过 aria2c（SOCKS5 代理）
+
     local skip_aria2=false
-    if [ -n "$proxy" ] && [[ "$proxy" =~ ^socks5 ]]; then
-        skip_aria2=true
-    fi
-    
+
     if command -v aria2c &> /dev/null && [ "$skip_aria2" = false ]; then
-        local aria2_args=(-x 16 -s 16 --max-tries=3 --retry-wait=2 --continue=true -q)
-        if [ -n "$proxy" ] && [[ "$proxy" =~ ^(http|https):// ]]; then
-            # 对于 HTTP/HTTPS 代理，使用环境变量方式
-            export ALL_PROXY="$proxy"
-            export all_proxy="$proxy"
+        local aria2_args=(-x 16 -s 16 --max-tries=3 --retry-wait=2 --continue=true --show-console-readout=true --summary-interval=0 --console-log-level=warn)
+        if [ -n "$http_proxy_url" ]; then
+            aria2_args+=(--all-proxy="$http_proxy_url")
         fi
-        aria2c "${aria2_args[@]}" -d "$(dirname "$output")" -o "$(basename "$output")" "$url"
+        (
+            unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+            aria2c "${aria2_args[@]}" -d "$(dirname "$output")" -o "$(basename "$output")" "$url"
+        )
         download_exit=$?
-        unset ALL_PROXY all_proxy 2>/dev/null || true
         if [ $download_exit -eq 0 ] && [ "$(dirname "$output")/$(basename "$output")" != "$output" ]; then
             mv "$(dirname "$output")/$(basename "$output")" "$output" 2>/dev/null || true
         fi
     elif [ "$skip_aria2" = true ]; then
+        if [ "${SKIP_ARIA2:-0}" = "1" ]; then
+            log "  ⚠️  已通过环境变量 SKIP_ARIA2=1 禁用 aria2c，改用其他工具..."
+        else
+            log "  ⚠️  跳过 aria2c，改用其他工具..."
+        fi
         download_exit=1  # 标记为失败，继续尝试其他工具
     fi
-    
+
     # 如果 aria2c 失败或跳过，尝试其他工具
     if [ $download_exit -ne 0 ]; then
-        # 对于 SOCKS5 代理，优先使用 curl（原生支持）
-        if [ -n "$proxy" ] && [[ "$proxy" =~ ^socks5 ]] && command -v curl &> /dev/null; then
-            local curl_args=(-L --progress-bar -C - --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 3600 --ssl-no-revoke --proxy "$proxy" -q)
-            curl "${curl_args[@]}" -o "$output" "$url"
-            download_exit=$?
-        elif command -v axel &> /dev/null; then
-            local axel_args=(-n 16 -a -q)
-            if [ -n "$proxy" ]; then
-                axel_args+=("--proxy=${proxy}")
+        if command -v axel &> /dev/null; then
+            local axel_args=(-n 16 -a)
+            if [ -n "$http_proxy_url" ]; then
+                axel_args+=("--proxy=${http_proxy_url}")
             fi
-            axel "${axel_args[@]}" -o "$output" "$url"
+            (
+                unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+                axel "${axel_args[@]}" -o "$output" "$url"
+            )
             download_exit=$?
         elif command -v wget &> /dev/null; then
-            # wget 不支持 SOCKS5 代理，如果检测到 SOCKS5，跳过 wget
-            if [ -n "$proxy" ] && [[ "$proxy" =~ ^socks5 ]]; then
-                download_exit=1
+            local wget_args=(--continue --no-verbose --show-progress --progress=bar:force --timeout=30 --tries=3)
+            if [ -n "$http_proxy_url" ]; then
+                wget_args+=(--proxy=on)
             else
-                local wget_args=(--continue --show-progress --timeout=30 --tries=3)
-                if [ -n "$proxy" ]; then
-                    wget_args+=(--proxy=on)
-                    export http_proxy="$proxy"
-                    export https_proxy="$proxy"
+                wget_args+=(--no-proxy)
+            fi
+            (
+                unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+                if [ -n "$http_proxy_url" ]; then
+                    export http_proxy="$http_proxy_url"
+                    export https_proxy="$http_proxy_url"
+                    export HTTP_PROXY="$http_proxy_url"
+                    export HTTPS_PROXY="$http_proxy_url"
                 fi
                 wget "${wget_args[@]}" -O "$output" "$url"
-                download_exit=$?
-                unset http_proxy https_proxy 2>/dev/null || true
-            fi
+            )
+            download_exit=$?
         elif command -v curl &> /dev/null; then
-            local curl_args=(-L --progress-bar -C - --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 3600 --ssl-no-revoke -q)
-            if [ -n "$proxy" ]; then
-                curl_args+=(--proxy "$proxy")
+            local curl_args=(-L --progress-bar -C - --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 3600 --ssl-no-revoke)
+            if [ -n "$http_proxy_url" ]; then
+                curl_args+=(--proxy "$http_proxy_url")
             fi
-            curl "${curl_args[@]}" -o "$output" "$url"
+            (
+                unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+                curl "${curl_args[@]}" -o "$output" "$url"
+            )
             download_exit=$?
         else
             log "ERROR: 未找到可用的下载工具"
@@ -359,10 +421,10 @@ download_file() {
             return 1
         fi
     fi
-    
+
     # 重新启用 set -e
     set -e
-    
+
     if [ $download_exit -eq 0 ]; then
         # 检查下载的文件是否有效（不是 "Not Found" 或空文件）
         if [ ! -s "$output" ]; then
@@ -402,7 +464,7 @@ log_section "[0] 下载 manifest 文件"
 
 MANIFEST_FILE="manifest-${VERSION}.json"
 MANIFEST_URL="${GITHUB_RELEASE_URL}/${MANIFEST_FILE}"
-    
+
 # 检查 manifest 文件是否存在且有效
 manifest_valid=false
 if [ -f "$MANIFEST_FILE" ]; then
@@ -472,56 +534,68 @@ DOWNLOAD_SHARED=true
 log "共享资源包: 默认下载 (推荐)"
 
 # 显示可用地图并让用户选择
-
-# 显示可用地图并让用户选择
 map_names=()
 if [ "$manifest_valid" = true ] && [ -f "$MANIFEST_FILE" ] && command -v jq &> /dev/null; then
+        set +e
         log "从 manifest 读取可用地图包..."
         echo ""
         echo "可用地图包:"
-        map_index=1
-        while IFS= read -r map_name; do
-            if [ -n "$map_name" ]; then
-                map_size=$(jq -r ".packages.maps[] | select(.name==\"$map_name\") | .size" "$MANIFEST_FILE" 2>/dev/null || echo "未知")
-                map_desc=$(jq -r ".packages.maps[] | select(.name==\"$map_name\") | .description" "$MANIFEST_FILE" 2>/dev/null || echo "")
-                if [ "$map_size" != "null" ] && [ "$map_size" != "" ]; then
-                size_mb=$(echo "scale=1; $map_size / 1024 / 1024" | bc 2>/dev/null || echo "0")
-                    printf "  %2d. %-25s (%6.1f MB) %s\n" "$map_index" "$map_name" "$size_mb" "$map_desc"
+        map_index=0
+        ordered_maps=("CustomWorld" "SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "HouseWorld" "RunningWorld" "Town10Zombie" "IROSFlatWorld" "IROSSlopedWorld" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "3DGSWorld" "MoonWorld")
+        manifest_map_names=$(jq -r '.packages.maps[].name' "$MANIFEST_FILE" 2>/dev/null)
+        declare -A processed_maps
+        show_map_info() {
+            local m_name=$1
+            if [ -n "$m_name" ]; then
+                local m_size=$(jq -r ".packages.maps[] | select(.name==\"$m_name\") | .size" "$MANIFEST_FILE" 2>/dev/null || echo "未知")
+                local m_desc=$(jq -r ".packages.maps[] | select(.name==\"$m_name\") | .description" "$MANIFEST_FILE" 2>/dev/null || echo "")
+                if [ "$m_size" != "null" ] && [ "$m_size" != "" ]; then
+                    local size_mb=$(echo "scale=1; $m_size / 1024 / 1024" | bc 2>/dev/null || echo "0")
+                    printf "  %2d. %-25s (%6.1f MB) %s\n" "$map_index" "$m_name" "$size_mb" "$m_desc"
                 else
-                    printf "  %2d. %-25s\n" "$map_index" "$map_name"
+                    printf "  %2d. %-25s\n" "$map_index" "$m_name"
                 fi
-                map_names+=("$map_name")
+                map_names+=("$m_name")
                 ((map_index++))
+                processed_maps["$m_name"]=1
             fi
-        done < <(jq -r '.packages.maps[].name' "$MANIFEST_FILE" 2>/dev/null)
-        
+        }
+        for map_name in "${ordered_maps[@]}"; do
+            if echo "$manifest_map_names" | grep -q "^${map_name}$"; then
+                show_map_info "$map_name"
+            fi
+        done
+        while IFS= read -r map_name; do
+            if [ -n "$map_name" ] && [ -z "${processed_maps[$map_name]}" ]; then
+                show_map_info "$map_name"
+            fi
+        done <<< "$manifest_map_names"
         if [ ${#map_names[@]} -eq 0 ]; then
             log "⚠️  无法解析 manifest，使用默认地图列表（按地图ID顺序）"
             map_names=("CustomWorld" "SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "HouseWorld" "RunningWorld" "Town10Zombie" "IROSFlatWorld" "IROSSlopedWorld" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "3DGSWorld" "MoonWorld")
-        map_index=1
+        map_index=0
             for map_name in "${map_names[@]}"; do
                 printf "  %2d. %s\n" "$map_index" "$map_name"
                 ((map_index++))
             done
         fi
+        set -e
     else
-        # 如果没有 manifest 或 jq，使用默认列表（按地图ID顺序）
         echo "可用地图包:"
         map_names=("CustomWorld" "SceneWorld" "Town10World" "YardWorld" "CrowdWorld" "VeniceWorld" "HouseWorld" "RunningWorld" "Town10Zombie" "IROSFlatWorld" "IROSSlopedWorld" "IROSFlatWorld2025" "IROSSloppedWorld2025" "OfficeWorld" "3DGSWorld" "MoonWorld")
-        map_index=1
+        map_index=0
         for map_name in "${map_names[@]}"; do
             printf "  %2d. %s\n" "$map_index" "$map_name"
             ((map_index++))
         done
     fi
-    
+
     echo ""
 echo "输入要下载的地图（支持数字索引或地图名称，用空格分隔）:"
-echo "  例如: 0 1 2  或  CustomWorld SceneWorld Town10World  或  0 CustomWorld 14"
+echo "  例如: 0 1 2  或  CustomWorld SceneWorld Town10World  或  0 SceneWorld 2"
 echo "  输入 'all' 下载全部，直接回车跳过"
     read -r maps_input
-    
-# 解析用户选择的地图
+
 SELECTED_MAPS=()
 if [ -z "$maps_input" ]; then
     log "已选择：跳过所有地图包"
@@ -531,18 +605,15 @@ elif [ "$maps_input" = "all" ]; then
 else
     for map_input in $maps_input; do
         found=false
-        
-        # 1. 检查是否是数字索引（1-based）
         if [[ "$map_input" =~ ^[0-9]+$ ]]; then
-            idx=$((map_input - 1))  # 转换为 0-based 索引
+            idx=$((map_input))
             if [ $idx -ge 0 ] && [ $idx -lt ${#map_names[@]} ]; then
                 SELECTED_MAPS+=("${map_names[$idx]}")
                 found=true
             else
-                log "⚠️  无效的索引: $map_input (范围: 1-${#map_names[@]})，跳过"
+                log "⚠️  无效的索引: $map_input (范围: 0-$(( ${#map_names[@]} - 1 )))，跳过"
             fi
         else
-            # 2. 检查是否是有效的地图名
             for map_name in "${map_names[@]}"; do
                 if [ "$map_input" = "$map_name" ]; then
                     SELECTED_MAPS+=("$map_name")
@@ -555,10 +626,7 @@ else
             fi
         fi
     done
-    
-    # 去重（如果用户输入了重复的索引或名称）
     if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
-        # 使用关联数组去重
         declare -A unique_maps
         for map in "${SELECTED_MAPS[@]}"; do
             unique_maps["$map"]=1
@@ -571,6 +639,7 @@ fi
 echo ""
 log "=========================================="
 log "选择完成！开始自动下载和安装..."
+log "  - 资源文件包: ✓ (必需)"
 log "  - 基础包: ✓ (必需)"
 log "  - 共享资源包: ✓ (默认)"
 log "  - 地图包: ${#SELECTED_MAPS[@]} 个"
@@ -587,7 +656,7 @@ log_section "[2] 下载并安装资源文件包 (必需)"
 {
     ASSETS_FILE="assets-${VERSION}.tar.gz"
     ASSETS_URL="${GITHUB_RELEASE_URL}/${ASSETS_FILE}"
-    
+
     # 从 manifest 读取资源包的大小和 SHA256
     ASSETS_SIZE=""
     ASSETS_SHA256=""
@@ -597,7 +666,7 @@ log_section "[2] 下载并安装资源文件包 (必需)"
         ASSETS_SHA256=$(jq -r '.packages.assets.sha256 // empty' "$MANIFEST_FILE" 2>/dev/null || echo "")
         ASSETS_REQUIRED=$(jq -r '.packages.assets.required // false' "$MANIFEST_FILE" 2>/dev/null || echo "false")
     fi
-    
+
     # 检查资源文件是否已安装（检查一些关键文件是否存在）
     ASSETS_INSTALLED=false
     if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ] && [ -f "${PROJECT_ROOT}/src/UeSim/Linux/zsibot_mujoco_ue/Binaries/Linux/zsibot_mujoco_ue-Linux-Shipping" ]; then
@@ -607,7 +676,7 @@ log_section "[2] 下载并安装资源文件包 (必需)"
             ASSETS_INSTALLED=true
         fi
     fi
-    
+
     if [ "$ASSETS_INSTALLED" = true ]; then
         log "✓ 资源文件已安装，跳过"
     elif [ -f "${DOWNLOAD_DIR}/${ASSETS_FILE}" ]; then
@@ -625,7 +694,7 @@ log_section "[2] 下载并安装资源文件包 (必需)"
             # 继续下载流程
         fi
     fi
-    
+
     # 如果需要下载
     if [ "$ASSETS_INSTALLED" = false ] && [ ! -f "${DOWNLOAD_DIR}/${ASSETS_FILE}" ]; then
         if [ "$ASSETS_REQUIRED" = "true" ] || [ -n "$ASSETS_SHA256" ]; then
@@ -649,7 +718,7 @@ log_section "[3] 下载并安装基础包 (必需)"
 {
     BASE_FILE="base-${VERSION}.tar.gz"
     BASE_URL="${GITHUB_RELEASE_URL}/${BASE_FILE}"
-    
+
     # 从 manifest 读取基础包的大小和 SHA256
     BASE_SIZE=""
     BASE_SHA256=""
@@ -657,7 +726,7 @@ log_section "[3] 下载并安装基础包 (必需)"
         BASE_SIZE=$(jq -r '.packages.base.size // empty' "$MANIFEST_FILE" 2>/dev/null || echo "")
         BASE_SHA256=$(jq -r '.packages.base.sha256 // empty' "$MANIFEST_FILE" 2>/dev/null || echo "")
     fi
-    
+
     # 检查基础包是否已安装（检查关键文件是否存在）
     if [ -f "${PAK_DIR}/pakchunk0-Linux.pak" ]; then
         log "✓ 基础包已安装，跳过"
@@ -668,10 +737,10 @@ log_section "[3] 下载并安装基础包 (必需)"
             if extract_tar "${DOWNLOAD_DIR}/${BASE_FILE}" "$TARGET_DIR"; then
                 # 使用公共函数移动 chunk 文件
                 move_chunk_files_to_paks "${TARGET_DIR}/Content/Paks" "$PAK_DIR"
-                
+
                 # 从 UeSim 目录拷贝模型到 robot_mujoco 目录
                 copy_models_from_uesim_to_robot_mujoco
-                
+
                 log "✓ 基础包安装完成"
             else
                 error_exit "基础包解压失败"
@@ -682,17 +751,17 @@ log_section "[3] 下载并安装基础包 (必需)"
             # 继续下载流程
         fi
     fi
-    
+
     # 如果需要下载
     if [ ! -f "${PAK_DIR}/pakchunk0-Linux.pak" ] && [ ! -f "${DOWNLOAD_DIR}/${BASE_FILE}" ]; then
         log "开始下载基础包..."
         if download_and_extract_stream "$BASE_URL" "$TARGET_DIR" "基础包" "$BASE_SIZE" "$BASE_SHA256"; then
             # 使用公共函数移动 chunk 文件
             move_chunk_files_to_paks "${TARGET_DIR}/Content/Paks" "$PAK_DIR"
-            
+
             # 从 UeSim 目录拷贝模型到 robot_mujoco 目录
             copy_models_from_uesim_to_robot_mujoco
-            
+
             log "✓ 基础包安装完成"
         else
             error_exit "基础包下载失败，请检查网络连接和版本号"
@@ -706,7 +775,7 @@ if [ "$DOWNLOAD_SHARED" = true ]; then
     {
         SHARED_FILE="shared-${VERSION}.tar.gz"
         SHARED_URL="${GITHUB_RELEASE_URL}/${SHARED_FILE}"
-        
+
         # 从 manifest 读取共享资源包的大小和 SHA256
         SHARED_SIZE=""
         SHARED_SHA256=""
@@ -716,12 +785,11 @@ if [ "$DOWNLOAD_SHARED" = true ]; then
             SHARED_SHA256=$(jq -r '.packages.shared.sha256 // empty' "$MANIFEST_FILE" 2>/dev/null || echo "")
             SHARED_IS_SPLIT=$(jq -r '.packages.shared.is_split // false' "$MANIFEST_FILE" 2>/dev/null || echo "false")
         fi
-        
+
         # 检查共享资源包是否已安装
         if [ -f "${PAK_DIR}/pakchunk1-Linux.pak" ]; then
             log "✓ 共享资源包已安装，跳过"
-        elif [ -f "${DOWNLOAD_DIR}/${SHARED_FILE}" ]; then
-            # 验证已下载文件的完整性
+        elif [ "$SHARED_IS_SPLIT" != "true" ] && [ -f "${DOWNLOAD_DIR}/${SHARED_FILE}" ]; then
             if verify_file_integrity "${DOWNLOAD_DIR}/${SHARED_FILE}" "$SHARED_SIZE" "$SHARED_SHA256"; then
                 log "✓ 共享资源包已下载且完整，跳过下载，直接解压..."
                 extract_tar "${DOWNLOAD_DIR}/${SHARED_FILE}" "$PAK_DIR"
@@ -729,25 +797,66 @@ if [ "$DOWNLOAD_SHARED" = true ]; then
             else
                 log "⚠️  已下载的共享资源包完整性验证失败，重新下载..."
                 rm -f "${DOWNLOAD_DIR}/${SHARED_FILE}"
-                # 继续下载流程
             fi
         fi
-        
+
         # 如果需要下载
-        if [ ! -f "${PAK_DIR}/pakchunk1-Linux.pak" ] && [ ! -f "${DOWNLOAD_DIR}/${SHARED_FILE}" ]; then
-            # 如果是分片文件，使用分片下载逻辑
+        if [ ! -f "${PAK_DIR}/pakchunk1-Linux.pak" ]; then
             if [ "$SHARED_IS_SPLIT" = "true" ]; then
-                log "检测到共享资源包为分片文件，使用分片下载..."
-                # 这里可以调用分片下载逻辑（类似地图包的分片下载）
-                # 暂时先尝试下载完整包
-                log "⚠️  分片下载功能待完善，尝试下载完整包..."
-            fi
-            
-            log "开始下载共享资源包..."
-            if download_and_extract_stream "$SHARED_URL" "$PAK_DIR" "共享资源包" "$SHARED_SIZE" "$SHARED_SHA256"; then
-                log "✓ 共享资源包安装完成"
+                SHARED_MERGE_SCRIPT="${SHARED_FILE%.tar.gz}.tar.merge.sh"
+                SHARED_MERGE_URL="${GITHUB_RELEASE_URL}/${SHARED_MERGE_SCRIPT}"
+                if download_file "$SHARED_MERGE_URL" "$SHARED_MERGE_SCRIPT"; then
+                    if [ ! -s "$SHARED_MERGE_SCRIPT" ] || head -1 "$SHARED_MERGE_SCRIPT" | grep -q "Not Found"; then
+                        log "⚠️  合并脚本下载失败或无效，跳过"
+                        rm -f "$SHARED_MERGE_SCRIPT"
+                    else
+                        log "检测到分片文件，开始下载分片..."
+                        part_idx=0
+                        download_success=true
+                        while true; do
+                            part_ext=$(printf "part%03d" $part_idx)
+                            part_file="${SHARED_FILE%.tar.gz}.tar.${part_ext}"
+                            part_url="${GITHUB_RELEASE_URL}/${part_file}"
+                          if download_file "$part_url" "$part_file"; then
+                              part_idx=$((part_idx + 1))
+                          else
+                                if [ $part_idx -eq 0 ]; then
+                                    log "⚠️  无法下载第一个分片: $part_file"
+                                    download_success=false
+                                else
+                                    log "分片下载完成 (共 $part_idx 个)"
+                                fi
+                                break
+                            fi
+                        done
+                        if [ "$download_success" = true ] && [ $part_idx -gt 0 ]; then
+                            sha_file="${SHARED_FILE%.tar.gz}.tar.sha256"
+                            download_file "${GITHUB_RELEASE_URL}/${sha_file}" "$sha_file" 2>/dev/null || true
+                            log "合并分片..."
+                            chmod +x "$SHARED_MERGE_SCRIPT"
+                            if ./$SHARED_MERGE_SCRIPT; then
+                                log "✓ 合并成功"
+                                extract_tar "$SHARED_FILE" "$PAK_DIR"
+                                log "✓ 共享资源包安装完成"
+                                log "✓ 文件保留在: ${DOWNLOAD_DIR}/"
+                            else
+                                log "⚠️  合并失败"
+                            fi
+                        else
+                            log "⚠️  分片下载不完整"
+                        fi
+                    fi
+                else
+                    log "⚠️  合并脚本下载失败"
+                fi
             else
-                log "⚠️  共享资源包下载失败，跳过"
+                if [ ! -f "${DOWNLOAD_DIR}/${SHARED_FILE}" ]; then
+                    if download_and_extract_stream "$SHARED_URL" "$PAK_DIR" "共享资源包" "$SHARED_SIZE" "$SHARED_SHA256"; then
+                        log "✓ 共享资源包安装完成"
+                    else
+                        log "⚠️  共享资源包下载失败，跳过"
+                    fi
+                fi
             fi
         fi
     }
@@ -756,16 +865,16 @@ fi
 # 下载并安装地图包
 if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
     log_section "[5] 下载并安装地图包"
-    
+
     # 函数：下载并安装单个地图包（支持分片和流式处理）
     download_and_install_map() {
         local map_name=$1
         local map_file="${map_name}-${VERSION}.tar.gz"
         local map_url="${GITHUB_RELEASE_URL}/${map_file}"
-        
+
         log ""
         log "处理地图包: $map_name"
-        
+
         # 从 manifest 读取地图包的大小和 SHA256
         local map_size=""
         local map_sha256=""
@@ -775,7 +884,7 @@ if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
             map_sha256=$(jq -r ".packages.maps[] | select(.name==\"$map_name\") | .sha256 // empty" "$MANIFEST_FILE" 2>/dev/null || echo "")
             is_split=$(jq -r ".packages.maps[] | select(.name==\"$map_name\") | .is_split // false" "$MANIFEST_FILE" 2>/dev/null || echo "false")
         fi
-        
+
         # 检查是否已下载
         if [ -f "${DOWNLOAD_DIR}/${map_file}" ]; then
             # 验证已下载文件的完整性
@@ -793,19 +902,19 @@ if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
                 rm -f "${DOWNLOAD_DIR}/${map_file}"
             fi
         fi
-        
+
         # 1. 尝试流式下载完整包（传入大小和 SHA256 进行验证）
         if download_and_extract_stream "$map_url" "$PAK_DIR" "$map_name" "$map_size" "$map_sha256"; then
             log "  ✓ ${map_name} 安装完成"
             return 0
         fi
-        
+
         # 2. 如果流式下载失败，检查是否为分片文件
         if [ "$is_split" = "true" ]; then
             log "  ⚠️  完整包下载失败，尝试分片下载（manifest 标记为分片文件）..."
             local merge_script="${map_file%.tar.gz}.tar.merge.sh"
         local merge_url="${GITHUB_RELEASE_URL}/${merge_script}"
-        
+
             # 尝试下载合并脚本
             if download_file "$merge_url" "$merge_script" 2>/dev/null; then
                 # 检查下载的文件是否有效（不是 "Not Found" 或空文件）
@@ -815,16 +924,16 @@ if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
                     return 1
                 fi
                 log "  检测到分片文件，开始下载分片..."
-            
+
             # 下载所有分片
             local part_idx=0
             local download_success=true
-            
+
             while true; do
                 local part_ext=$(printf "part%03d" $part_idx)
                 local part_file="${map_file%.tar.gz}.tar.${part_ext}"
                 local part_url="${GITHUB_RELEASE_URL}/${part_file}"
-                
+
                 if download_file "$part_url" "$part_file" 2>/dev/null; then
                     ((part_idx++))
                 else
@@ -837,12 +946,12 @@ if [ ${#SELECTED_MAPS[@]} -gt 0 ]; then
                     break
                 fi
             done
-            
+
             if [ "$download_success" = true ] && [ $part_idx -gt 0 ]; then
                 # 下载校验和文件（可选）
                 local sha_file="${map_file%.tar.gz}.tar.sha256"
                 download_file "${GITHUB_RELEASE_URL}/${sha_file}" "$sha_file" 2>/dev/null || true
-                
+
                 # 执行合并
                 log "  合并分片..."
                 chmod +x "$merge_script"
@@ -880,7 +989,7 @@ log_section "[6] 验证安装"
 {
     # 使用公共函数验证安装
     verify_installation "$PAK_DIR"
-    
+
     # 验证资源文件是否已安装
     if [ -f "${PROJECT_ROOT}/bin/sim_launcher" ]; then
         launcher_size=$(stat -f%z "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || stat -c%s "${PROJECT_ROOT}/bin/sim_launcher" 2>/dev/null || echo 0)
@@ -911,7 +1020,7 @@ log_section "[7] 完成"
     echo ""
     echo "现在可以运行模拟器了:"
     echo "  cd ${PROJECT_ROOT}"
-    echo "  ./scripts/run_sim.sh 1 0  # XGB机器人，CustomWorld地图"
+    echo "  ./bin/sim_launcher"
     echo ""
     echo "提示: 如果需要重新安装或安装其他地图包，可以:"
     echo "  1. 使用本地安装脚本: bash scripts/release_manager/install_chunks_local.sh ${VERSION}"
