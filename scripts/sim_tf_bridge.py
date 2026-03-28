@@ -57,6 +57,7 @@ class SimTfBridge(Node):
         self.declare_parameter('odom_output_topic', '/odom/current_pose')
         self.declare_parameter('laserscan_topic', '/laser_scan')
         self.declare_parameter('enable_laserscan', True)
+        self.declare_parameter('publish_map_to_odom', True)  # 与 lightning-lm 共存时设为 False
 
         # LaserScan parameters
         self.declare_parameter('min_height', -0.3)
@@ -72,6 +73,7 @@ class SimTfBridge(Node):
         odom_output = self.get_parameter('odom_output_topic').value
         laserscan_topic = self.get_parameter('laserscan_topic').value
         self.enable_laserscan = self.get_parameter('enable_laserscan').value
+        self.publish_map_to_odom = self.get_parameter('publish_map_to_odom').value
 
         self.min_height = self.get_parameter('min_height').value
         self.max_height = self.get_parameter('max_height').value
@@ -139,12 +141,14 @@ class SimTfBridge(Node):
         transforms = []
 
         # map → odom (identity, 真值里程计无漂移)
-        t_map = TransformStamped()
-        t_map.header.stamp = stamp
-        t_map.header.frame_id = 'map'
-        t_map.child_frame_id = 'odom'
-        t_map.transform.rotation.w = 1.0
-        transforms.append(t_map)
+        # 与 lightning-lm 共存时禁用，由 lightning-lm 发布 map→odom
+        if self.publish_map_to_odom:
+            t_map = TransformStamped()
+            t_map.header.stamp = stamp
+            t_map.header.frame_id = 'map'
+            t_map.child_frame_id = 'odom'
+            t_map.transform.rotation.w = 1.0
+            transforms.append(t_map)
 
         # base_link → livox_frame (identity, 导航系统期望的 frame)
         t_livox = TransformStamped()
@@ -163,10 +167,9 @@ class SimTfBridge(Node):
         transforms.append(t_lidar)
 
         self.static_tf_broadcaster.sendTransform(transforms)
-        self.get_logger().info(
-            'Static TFs: map→odom, base_link→livox_frame, '
-            'base_link→lidar (all identity)'
-        )
+        tfs = ('map→odom, ' if self.publish_map_to_odom else '') + \
+            'base_link→livox_frame, base_link→lidar'
+        self.get_logger().info(f'Static TFs: {tfs} (all identity)')
 
     def odom_callback(self, msg: Odometry):
         """从 MuJoCo 里程计发布 odom→base_link TF + /odom/current_pose"""
